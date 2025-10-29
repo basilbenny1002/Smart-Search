@@ -1,5 +1,5 @@
 import os
-from models import FileData
+from models import FileData, Tree
 
 def collect_files(root_dir):
     file_list = []
@@ -14,3 +14,38 @@ def collect_files(root_dir):
 
     return file_list
 
+trees = {letter: Tree(letter) for letter in 'abcdefghijklmnopqrstuvwxyz'}
+
+
+def generate_tree(root_dir: str):
+    for files in collect_files(root_dir=root_dir):
+        first_letter = files.file_name[0].lower()
+        root_tree = trees[first_letter]  
+        for i in range(1, len(files.file_name)):
+            letter = files.file_name.lower()[i]
+            node = getattr(root_tree, letter)
+            if node is None:
+                new_node = Tree(letter)
+                setattr(root_tree, letter, new_node)
+                root_tree = new_node
+            elif node is not None and i < len(files.file_name) - 1:
+                root_tree = node
+                root_tree.files.append(files)
+            elif node is not None:
+                root_tree = node
+                
+def search_tree(prefix: str):
+    first_letter = prefix[0].lower()
+    current_node = trees.get(first_letter)
+
+    for letter in prefix[1:]:
+        if current_node is None:
+            return []
+        current_node = getattr(current_node, letter)
+
+    if current_node:
+        return current_node.files
+    return []
+            
+
+            

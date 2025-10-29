@@ -1,13 +1,11 @@
+import string
+
 class Tree:
     def __init__(self, value):
         self.value = value
-        self.files = {}
-        self.a = None
-        self.b = None
-        self.c = None
-        self.d = None
-
-
+        self.files = []
+        for letter in string.ascii_lowercase:
+            setattr(self, letter, None)
 
 class FileData:
     def __init__(self, name: str, path: str, type: str):
