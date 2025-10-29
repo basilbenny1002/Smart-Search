@@ -19,5 +19,7 @@ for letter in "abcdefghijklmnopqrstuvwxyz":
         loaded_root = Tree.from_dict(json.load(f))
         loaded_trees[letter] = loaded_root
 
-trees = loaded_trees
-search_tree("hehehe")
+
+trees.clear()
+trees.update(loaded_trees)
+results = search_tree("hehehe")
