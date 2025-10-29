@@ -16,12 +16,20 @@ def collect_files(root_dir):
 
 trees = {letter: Tree(letter) for letter in 'abcdefghijklmnopqrstuvwxyz'}
 
+def check_letters(string: str):
+    for char in string:
+        if not char.isalpha():
+            return False
+    return True
 
 def generate_tree(root_dir: str):
     for files in collect_files(root_dir=root_dir):
+        if not check_letters(files.file_name):
+            continue
         first_letter = files.file_name[0].lower()
         root_tree = trees[first_letter]  
         for i in range(1, len(files.file_name)):
+            
             letter = files.file_name.lower()[i]
             node = getattr(root_tree, letter)
             if node is None:
