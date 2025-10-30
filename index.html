@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Bar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: transparent;
+            -webkit-app-region: drag;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+        }
+
+        .search-wrapper {
+            -webkit-app-region: no-drag;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, rgba(173, 216, 230, 0.6) 0%, rgba(216, 191, 216, 0.6) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 28px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .search-bar:focus-within {
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.25);
+            background: linear-gradient(135deg, rgba(173, 216, 230, 0.8) 0%, rgba(216, 191, 216, 0.8) 100%);
+        }
+
+        .search-icon {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: rgba(80, 80, 130, 0.9);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        #searchInput {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            color: rgba(50, 50, 80, 0.9);
+            padding: 4px 0;
+        }
+
+        #searchInput::placeholder {
+            color: rgba(100, 100, 150, 0.5);
+        }
+
+        .search-button {
+            -webkit-app-region: no-drag;
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .search-button:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+            transform: scale(1.05);
+        }
+
+        .search-button:active {
+            transform: scale(0.95);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.6;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+        }
+
+        .filter-btn:hover {
+            opacity: 0.9;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-btn[style*="opacity: 1"] {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .filter-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: rgba(100, 100, 150, 0.8);
+            stroke-width: 1.5;
+            fill: rgba(100, 100, 150, 0.1);
+        }
+
+        .search-controls {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            position: relative;
+        }
+
+        .dropdown-toggle {
+            -webkit-app-region: no-drag;
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 10px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dropdown-toggle:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+        }
+
+        .dropdown-toggle svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            margin-top: 8px;
+            min-width: 220px;
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(100, 150, 200, 0.1);
+        }
+
+        .dropdown-item.active {
+            background: rgba(100, 150, 200, 0.2);
+            border-left: 3px solid rgba(100, 150, 200, 1);
+            padding-left: 13px;
+        }
+
+        .dropdown-item-title {
+            font-weight: 600;
+            color: rgba(30, 30, 60, 0.95);
+            font-size: 12px;
+        }
+
+        .dropdown-item-desc {
+            font-size: 11px;
+            color: rgba(100, 100, 140, 0.7);
+        }
+
+        .results-container {
+            -webkit-app-region: no-drag;
+            flex: 1;
+            overflow-y: hidden;
+            padding: 8px 12px;
+            display: none;
+        }
+
+        .results-container.show { display: block; overflow-y: auto; }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .result-item:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-left-color: rgba(150, 120, 200, 0.8);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .result-item.selected {
+            background: rgba(100, 120, 180, 0.9);
+            border-left-color: rgba(200, 220, 255, 1);
+            box-shadow: 0 4px 12px rgba(100, 120, 180, 0.4);
+        }
+
+        .result-item.selected .result-name {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .result-item.selected .result-path {
+            color: rgba(200, 220, 255, 0.85);
+        }
+
+        .result-item.selected .result-type-badge {
+            color: rgba(200, 220, 255, 0.9);
+            background: rgba(200, 220, 255, 0.2);
+        }
+
+        .result-item.selected .result-icon svg {
+            stroke: rgba(200, 220, 255, 0.9);
+            fill: rgba(200, 220, 255, 0.15);
+        }
+
+        .result-image-preview {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(30, 30, 60, 0.95);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .result-path {
+            font-size: 11px;
+            color: rgba(100, 100, 140, 0.75);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: rgba(100, 100, 150, 0.6);
+            font-size: 13px;
+        }
+
+        .results-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .results-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .results-container::-webkit-scrollbar-thumb {
+            background: rgba(150, 120, 200, 0.4);
+            border-radius: 3px;
+        }
+
+        .results-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(150, 120, 200, 0.6);
+        }
+
+        .result-type-badge {
+            margin-left: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(100, 120, 180, 0.8);
+            background: rgba(100, 120, 180, 0.1);
+            border-radius: 10px;
+            padding: 3px 8px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-wrapper">
+            <div class="search-bar">
+                <span class="search-icon" id="searchIconContainer"></span>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search files, folders, images..."
+                    autocomplete="off"
+                >
+                <div class="filter-group">
+                    <button class="filter-btn" data-filter="all" title="All" aria-label="All"></button>
+                    <button class="filter-btn" data-filter="folder" title="Folders" aria-label="Folders"></button>
+                    <button class="filter-btn" data-filter="image" title="Images" aria-label="Images"></button>
+                    <button class="filter-btn" data-filter="video" title="Videos" aria-label="Videos"></button>
+                    <button class="filter-btn" data-filter="doc" title="Documents" aria-label="Documents"></button>
+                    <button class="filter-btn" data-filter="other" title="Others" aria-label="Others"></button>
+                </div>
+                <div class="search-controls">
+                    <button class="search-button" id="searchBtn">Search</button>
+                    <button class="dropdown-toggle" id="dropdownToggle">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <div class="dropdown-item active" data-search-type="normal">
+                            <div class="dropdown-item-title">Normal</div>
+                            <div class="dropdown-item-desc">Search by file/folder names</div>
+                        </div>
+                        <div class="dropdown-item" data-search-type="text">
+                            <div class="dropdown-item-title">Text Search</div>
+                            <div class="dropdown-item-desc">Search file contents</div>
+                        </div>
+                        <div class="dropdown-item" data-search-type="image">
+                            <div class="dropdown-item-title">Image Search</div>
+                            <div class="dropdown-item-desc">Search by image description</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="results-container" id="resultsContainer">
+            <div class="no-results">Start typing to search...</div>
+        </div>
+    </div>
+
+    <script>
+        function getSvgIcon(type) {
+            const icons = {
+                search: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="6"/><path d="M14 14l6 6"/></svg>',
+                folder: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h8l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>',
+                image: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M3 15l6-6 9 9"/></svg>',
+                video: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3V9z"/></svg>',
+                document: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>',
+                audio: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5h4V7h2v5h4l-5 5z"/></svg>',
+                archive: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-1 9h-5v5h-2v-5H7v-2h5V8h2v5h5v2z"/></svg>',
+                file: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+                all: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+                other: '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>'
+            };
+            return icons[type] || icons.file;
+        }
+
+        function iconForType(type) {
+            const t = (type || '').toLowerCase();
+            if (["png","jpg","jpeg","gif","bmp","webp","image"].includes(t)) return 'image';
+            if (["mp4","mkv","mov","avi","video"].includes(t)) return 'video';
+            if (["mp3","wav","flac","m4a","audio"].includes(t)) return 'audio';
+            if (["zip","7z","rar","tar","gz"].includes(t)) return 'archive';
+            if (["pdf","ppt","pptx","xls","xlsx","csv","md","txt","rtf","doc","docx"].includes(t)) return 'document';
+            if (t === 'folder') return 'folder';
+            return 'file';
+        }
+
+        let selectedIndex = -1;
+        let currentResults = [];
+        let activeFilter = 'all';
+        let currentSearchType = 'normal';
+
+        const searchInput = document.getElementById('searchInput');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const searchButton = document.getElementById('searchBtn');
+        const searchIconContainer = document.getElementById('searchIconContainer');
+        const dropdownToggle = document.getElementById('dropdownToggle');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        searchIconContainer.innerHTML = getSvgIcon('search');
+
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+        });
+
+        document.addEventListener('click', () => {
+            dropdownMenu.classList.remove('show');
+        });
+
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                currentSearchType = item.getAttribute('data-search-type');
+                dropdownMenu.classList.remove('show');
+                performSearch(searchInput.value);
+            });
+        });
+
+        async function performSearch(query) {
+            if (!query.trim()) {
+                resultsContainer.innerHTML = '<div class="no-results">Start typing to search...</div>';
+                resultsContainer.classList.remove('show');
+                currentResults = [];
+                selectedIndex = -1;
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(90); } } catch {}
+                return;
+            }
+
+            let results = [];
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                    results = await window.pywebview.api.search(query, currentSearchType);
+                }
+            } catch (e) {
+                console.warn('Backend search failed:', e);
+            }
+
+            const normalized = (results || []).map(r => ({
+                name: r.name || r.file_name || '',
+                path: r.path || r.file_path || '',
+                type: r.type || r.file_type || 'file',
+                iconType: iconForType(r.type || r.file_type),
+                image_url: r.image_url || r.thumbnail || null
+            }));
+
+            const filtered = normalized.filter(item => {
+                if (activeFilter === 'all') return true;
+                const t = (item.type || '').toLowerCase();
+                if (activeFilter === 'folder') return t === 'folder';
+                if (activeFilter === 'image') return ['png','jpg','jpeg','gif','bmp','webp','image'].includes(t);
+                if (activeFilter === 'video') return ['mp4','mkv','mov','avi','video'].includes(t);
+                if (activeFilter === 'doc') return ['pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx'].includes(t);
+                if (activeFilter === 'other') return !(['png','jpg','jpeg','gif','bmp','webp','image','mp4','mkv','mov','avi','video','pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx','folder'].includes(t));
+                return true;
+            });
+
+            currentResults = filtered;
+            selectedIndex = -1;
+            displayResults(filtered);
+            const itemHeight = 34;
+            const baseHeight = 90;
+            const target = Math.min(700, baseHeight + itemHeight * filtered.length);
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                    await window.pywebview.api.resize_window(target);
+                }
+            } catch {}
+        }
+
+        function displayResults(results) {
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<div class="no-results">No results found</div>';
+                resultsContainer.classList.remove('show');
+                return;
+            }
+
+            resultsContainer.innerHTML = results.map((item, index) => {
+                if (currentSearchType === 'image' && item.image_url) {
+                    return `
+                        <div class="result-item" data-index="${index}">
+                            <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="result-image-preview">
+                            <div class="result-info">
+                                <div class="result-name">${escapeHtml(item.name)}</div>
+                                <div class="result-path">${escapeHtml(item.path)}</div>
+                            </div>
+                            <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="result-item" data-index="${index}">
+                            <span class="result-icon">${getSvgIcon(item.iconType)}</span>
+                            <div class="result-info">
+                                <div class="result-name">${escapeHtml(item.name)}</div>
+                                <div class="result-path">${escapeHtml(item.path)}</div>
+                            </div>
+                            <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            document.querySelectorAll('.result-item').forEach((el) => {
+                const idx = parseInt(el.getAttribute('data-index'), 10);
+                el.addEventListener('mouseover', () => {
+                    selectedIndex = idx;
+                    updateSelection();
+                });
+                el.addEventListener('click', () => {
+                    selectedIndex = idx;
+                    updateSelection();
+                });
+                el.addEventListener('dblclick', () => {
+                    if (idx >= 0) openResult(currentResults[idx]);
+                });
+            });
+
+            resultsContainer.classList.add('show');
+        }
+
+        function selectResult(index) {
+            if (index < 0 || index >= currentResults.length) return;
+            selectedIndex = index;
+            updateSelection();
+        }
+
+        function updateSelection() {
+            document.querySelectorAll('.result-item').forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedIndex);
+            });
+
+            if (selectedIndex >= 0) {
+                const selectedItem = document.querySelector(`[data-index="${selectedIndex}"]`);
+                if (selectedItem) {
+                    selectedItem.scrollIntoView({ block: 'nearest' });
+                }
+            }
+        }
+
+        function openResult(item) {
+            console.log('Opening:', item);
+
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_file) {
+                window.pywebview.api.open_file(item.path, item.type).then(result => {
+                    console.log('File opened:', result);
+                }).catch(err => {
+                    console.error('Error opening file:', err);
+                });
+            } else {
+                alert(`Would open: ${item.path}\nType: ${item.type}`);
+            }
+        }
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (currentResults.length > 0) {
+                    selectedIndex = Math.min(selectedIndex + 1, currentResults.length - 1);
+                    updateSelection();
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentResults.length > 0) {
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSelection();
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0) {
+                    openResult(currentResults[selectedIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                searchInput.value = '';
+                resultsContainer.classList.remove('show');
+                currentResults = [];
+                selectedIndex = -1;
+            }
+        });
+
+        let debounceId = null;
+        searchInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (debounceId) clearTimeout(debounceId);
+            debounceId = setTimeout(() => performSearch(val), 200);
+        });
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.innerHTML = getSvgIcon(btn.getAttribute('data-filter'));
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.style.opacity = '0.6');
+                btn.style.opacity = '1.0';
+                activeFilter = btn.getAttribute('data-filter');
+                performSearch(searchInput.value || '');
+            });
+        });
+        const initBtn = document.querySelector('.filter-btn[data-filter="all"]');
+        if (initBtn) initBtn.style.opacity = '1.0';
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_window) { window.pywebview.api.toggle_window(); } } catch {}
+            }
+            if (e.ctrlKey && e.code === 'Space') {
+                e.preventDefault();
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_window) { window.pywebview.api.toggle_window(); } } catch {}
+            }
+        });
+
+        searchButton.addEventListener('click', () => {
+            if (selectedIndex >= 0) {
+                openResult(currentResults[selectedIndex]);
+            } else {
+                performSearch(searchInput.value);
+            }
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        window.addEventListener('load', () => {
+            searchInput.focus();
+        });
+    </script>
+</body>
+</html>
