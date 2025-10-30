@@ -1,27 +1,77 @@
 import string
 
 class Tree:
+    # Mapping of Windows-valid symbols to safe attribute names
+    SYMBOL_MAP = {
+        " ": "space",
+        "!": "exclamation",
+        "#": "hash",
+        "$": "dollar",
+        "%": "percent",
+        "&": "ampersand",
+        "'": "apostrophe",
+        ".": "dot",
+        "(": "lparen",
+        ")": "rparen",
+        "-": "dash",
+        "@": "at",
+        "^": "caret",
+        "_": "underscore",
+        "`": "backtick",
+        "{": "lbrace",
+        "}": "rbrace",
+        "~": "tilde",
+    }
+
+    # Digits → safe names
+    DIGIT_MAP = {str(i): f"num{i}" for i in range(10)}
+
+    # Reverse mapping (for saving and loading)
+    REVERSE_MAP = {v: k for k, v in {**SYMBOL_MAP, **DIGIT_MAP}.items()}
+
     def __init__(self, value):
         self.value = value
         self.files = []
-        for letter in string.ascii_lowercase:
-            setattr(self, letter, None)
+
+        # Create letter attributes
+        for ch in string.ascii_lowercase:
+            setattr(self, ch, None)
+
+        # Create digit and symbol attributes (safe names)
+        for name in [*self.SYMBOL_MAP.values(), *self.DIGIT_MAP.values()]:
+            setattr(self, name, None)
 
     def to_dict(self):
-        data = {"value": self.value, "files": [f.to_dict() for f in self.files]}
-        for letter in string.ascii_lowercase:
-            child = getattr(self, letter)
-            if child is not None:
-                data[letter] = child.to_dict()
+        """Convert tree into a serializable dict"""
+        data = {
+            "value": self.value,
+            "files": [f.to_dict() for f in self.files],
+        }
+
+        # Serialize letters, digits, and symbols
+        for ch in string.ascii_lowercase:
+            child = getattr(self, ch)
+            if child:
+                data[ch] = child.to_dict()
+
+        for name in [*self.SYMBOL_MAP.values(), *self.DIGIT_MAP.values()]:
+            child = getattr(self, name)
+            if child:
+                data[name] = child.to_dict()
+
         return data
 
     @classmethod
     def from_dict(cls, data):
+        """Rebuild a Tree object from its dictionary form"""
         node = cls(data["value"])
         node.files = [FileData.from_dict(f) if isinstance(f, dict) else f for f in data.get("files", [])]
-        for letter in string.ascii_lowercase:
-            if letter in data:
-                setattr(node, letter, cls.from_dict(data[letter]))
+
+        for key, value in data.items():
+            if key in ("value", "files"):
+                continue
+            if isinstance(value, dict):
+                setattr(node, key, cls.from_dict(value))
         return node
 
 class FileData:

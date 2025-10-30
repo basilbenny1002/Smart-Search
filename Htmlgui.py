@@ -15,8 +15,11 @@ except Exception as e:
     raise RuntimeError(f"Failed to import project modules: {e}")
 
 
-def _letters_only(s: str) -> str:
-    return "".join(ch for ch in (s or "") if ch.isalpha()).lower()
+def _clean_query(s: str) -> str:
+    """Keep letters, digits, and valid symbols (same as check_letters in tools.py)"""
+    VALID_SYMBOLS = set(" .!#$%&'()-@^_`{}~")  # added '.'
+    ALLOWED = set(string.ascii_letters + string.digits).union(VALID_SYMBOLS)
+    return "".join(ch for ch in (s or "") if ch in ALLOWED).lower()
 
 
 def load_trees_from_json(base_dir: str = ".") -> int:
@@ -58,34 +61,57 @@ class API:
         self._visible = True
 
     def _ensure_letter_loaded(self, ch: str) -> None:
-        if not ch or not ch.isalpha():
+        """Lazy-load the first-character tree for letters, digits, and mapped symbols.
+        Uses the same naming as main.py writes (e.g., 'atree.json', 'num1tree.json', 'dottree.json').
+        """
+        if not ch:
             return
-        letter = ch.lower()[0]
-        if letter in self._loaded:
+        key = None  # key used in 'trees' dict
+        filename = None  # filename to load
+
+        c0 = ch[0]
+        if c0.isalpha():
+            key = c0.lower()
+            filename = f"{key}tree.json"
+        elif c0.isdigit():
+            key = f"num{c0}"
+            filename = f"{key}tree.json"
+        else:
+            # Import symbol map lazily to avoid circulars
+            try:
+                from tools import SYMBOL_MAP as _SYM
+            except Exception:
+                _SYM = {}
+            if c0 in _SYM:
+                key = _SYM[c0]
+                filename = f"{key}tree.json"
+            else:
+                return  # unsupported leading char
+
+        if key in self._loaded:
             return
-        path = os.path.join(self._base, "trees", f"{letter}tree.json")
-        print(f"Loading tree for {letter} from {path}")
+        path = os.path.join(self._base, "trees", filename)
+        print(f"Loading tree for {key} from {path}")
         if not os.path.isfile(path):
             print(f"Tree file not found: {path}")
-            # Nothing to load; leave absent => search will return []
-            self._loaded.add(letter)
+            self._loaded.add(key)
             return
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 loaded_tree = Tree.from_dict(data)
-                trees[letter] = loaded_tree
-                print(f"Loaded tree for {letter} with {len(loaded_tree.files) if hasattr(loaded_tree, 'files') else 'unknown'} files")
+                trees[key] = loaded_tree
+                print(f"Loaded tree for {key} with {len(loaded_tree.files) if hasattr(loaded_tree, 'files') else 'unknown'} files")
         except Exception as e:
             print(f"Warning: failed to load {path}: {e}")
         finally:
-            self._loaded.add(letter)
+            self._loaded.add(key)
 
     def _normal_search(self, query: str) -> List[Dict[str, Any]]:
-        q = _letters_only(query)
-        print(f"Normal search for query='{query}' -> letters='{q}'")
+        q = _clean_query(query)
+        print(f"Normal search for query='{query}' -> cleaned='{q}'")
         if not q:
-            print("No letters in query, returning empty")
+            print("No valid characters in query, returning empty")
             return []
         # Lazy load only the first letter's tree if needed
         self._ensure_letter_loaded(q[0])
@@ -200,9 +226,9 @@ def main() -> None:
         height=200,
         frameless=True,
         on_top=True,
-        transparent=True
-        # pywebview expects a hex triplet, no alpha channel. Keep the page UI translucent instead.
-        # background_color="#000000",
+        transparent=False,  # Disable transparency to avoid white box
+        background_color="#9494EE"  # Dark background (VS Code-like)
+        # Or try: '#F3F3F3' for light theme
     )
 
     # Expose API methods
@@ -231,8 +257,9 @@ def main() -> None:
     t = threading.Thread(target=_hotkey_thread, daemon=True)
     t.start()
 
-    # Start UI
-    webview.start()
+    # Start UI - CEF doesn't support Python 3.12, use default backend
+    # Try edgechromium for better transparency (auto-detected on Windows)
+    webview.start(debug=False)
 
 
 if __name__ == "__main__":
