@@ -11,6 +11,10 @@
             box-sizing: border-box;
         }
 
+        html {
+            background: transparent;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: transparent;
@@ -23,8 +27,7 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
+            background: transparent;
             border-radius: 12px;
         }
 
@@ -32,6 +35,7 @@
             -webkit-app-region: no-drag;
             padding: 12px;
             flex-shrink: 0;
+            background: transparent;
         }
 
         .search-bar {
@@ -446,7 +450,13 @@
 
         dropdownToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            dropdownMenu.classList.toggle('show');
+            if (dropdownMenu.classList.contains('show')) {
+                dropdownMenu.classList.remove('show');
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(200); } } catch {}
+            } else {
+                dropdownMenu.classList.add('show');
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(400); } } catch {}
+            }
         });
 
         document.addEventListener('click', () => {
@@ -459,6 +469,7 @@
                 item.classList.add('active');
                 currentSearchType = item.getAttribute('data-search-type');
                 dropdownMenu.classList.remove('show');
+                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(200); } } catch {}
                 performSearch(searchInput.value);
             });
         });
@@ -505,17 +516,25 @@
             currentResults = filtered;
             selectedIndex = -1;
             displayResults(filtered);
-            const itemHeight = 34;
-            const baseHeight = 90;
-            const minHeight = 300;
-            const maxHeight = 700;
-            const calculated = baseHeight + itemHeight * (filtered.length + 2);
-            const target = Math.min(maxHeight, Math.max(minHeight, calculated));
-            try {
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
-                    await window.pywebview.api.resize_window(target);
-                }
-            } catch {}
+            if (filtered.length > 0) {
+                const itemHeight = 34;
+                const baseHeight = 90;
+                const minHeight = 300;
+                const maxHeight = 700;
+                const calculated = baseHeight + itemHeight * (filtered.length + 2);
+                const target = Math.min(maxHeight, Math.max(minHeight, calculated));
+                try {
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                        await window.pywebview.api.resize_window(target);
+                    }
+                } catch {}
+            } else {
+                try {
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                        await window.pywebview.api.resize_window(90);
+                    }
+                } catch {}
+            }
         }
 
         function displayResults(results) {

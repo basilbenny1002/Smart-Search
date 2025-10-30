@@ -197,11 +197,12 @@ def main() -> None:
         "Search Bar",
         "index.html",
         width=800,
-        height=150,
+        height=200,
         frameless=True,
         on_top=True,
+        transparent=True
         # pywebview expects a hex triplet, no alpha channel. Keep the page UI translucent instead.
-        background_color="#000000",
+        # background_color="#000000",
     )
 
     # Expose API methods
