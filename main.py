@@ -1,28 +1,60 @@
-from tools import  generate_tree, trees
-from models import FileData, Tree
-import json
-from pyuac import main_requires_admin
-@main_requires_admin
+"""
+Fastest Search - Main entry point
+Press Ctrl+Space to toggle the search window
+"""
+import threading
+import webview
+from api.backend_api import SearchAPI
+from config import WINDOW_WIDTH, WINDOW_HEIGHT, BACKGROUND_COLOR, UI_DIR
+import os
+
+
 def main():
-    loaded_trees = {}
-    ROOT_DIR = r"c:/"
+    """Initialize and start the application"""
+    api = SearchAPI()
+
+    # Create main window
+    window = webview.create_window(
+        "Fastest Search",
+        os.path.join(UI_DIR, "index.html"),
+        width=WINDOW_WIDTH,
+        height=WINDOW_HEIGHT,
+        frameless=True,
+        on_top=True,
+        transparent=False,
+        background_color=BACKGROUND_COLOR
+    )
+
+    # Expose API methods to frontend
+    window.expose(api.search)
+    window.expose(api.open_file)
+    window.expose(api.toggle_window)
+    window.expose(api.open_settings)
+    window.expose(api.open_info)
+    
+    api.bind_window(window)
+
+    # Global hotkey handler (Ctrl+Space)
+    def hotkey_thread():
+        try:
+            import keyboard
+            keyboard.add_hotkey('ctrl+space', lambda: api.toggle_window())
+            print("Global hotkey active: Ctrl+Space")
+            keyboard.wait()
+        except ImportError:
+            print("Install 'keyboard' package for global hotkey support")
+            print("  pip install keyboard")
+        except Exception as e:
+            print(f"Hotkey registration failed: {e}")
+
+    # Start hotkey listener in background
+    threading.Thread(target=hotkey_thread, daemon=True).start()
+
+    # Start the application
+    print("Starting Fastest Search...")
+    print("Press Ctrl+Space to toggle search window")
+    webview.start(debug=False)
 
 
-    generate_tree(ROOT_DIR)
-
-
-    for letter, tree in trees.items():
-        with open(rf"trees/{letter}tree.json", "w") as f:
-            json.dump(tree.to_dict(), f, indent=2)
-            
 if __name__ == "__main__":
     main()
-
-# for letter in "abcdefghijklmnopqrstuvwxyz":
-#     with open(f"./trees/{letter}tree.json") as f:
-#         loaded_root = Tree.from_dict(json.load(f))
-#         loaded_trees[letter] = loaded_root
-
-# trees.clear()
-# trees.update(loaded_trees)
-# results = search_tree("hehehe")

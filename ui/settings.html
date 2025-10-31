@@ -192,6 +192,27 @@
             width: 0%;
         }
 
+        .progress-fill.indeterminate {
+            width: 100%;
+            animation: indeterminate 1.5s infinite;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(100, 200, 150, 0.6) 25%, 
+                rgba(100, 150, 200, 0.8) 50%, 
+                rgba(100, 200, 150, 0.6) 75%, 
+                transparent 100%);
+            background-size: 200% 100%;
+        }
+
+        @keyframes indeterminate {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
         .progress-text {
             font-size: 11px;
             color: rgba(50, 50, 80, 0.75);
@@ -352,9 +373,6 @@
                         <span class="button-desc">Index all files and folders</span>
                     </div>
                 </div>
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
             </button>
             <div class="progress-container" id="filesProgress">
                 <div class="progress-bar">
@@ -377,9 +395,6 @@
                         <span class="button-desc">Index document contents for text search</span>
                     </div>
                 </div>
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
             </button>
             <div class="progress-container" id="documentsProgress">
                 <div class="progress-bar">
@@ -400,9 +415,6 @@
                         <span class="button-desc">Generate image descriptions for search</span>
                     </div>
                 </div>
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>
             </button>
             <div class="progress-container" id="imagesProgress">
                 <div class="progress-bar">
@@ -453,32 +465,48 @@
 
             btn.disabled = true;
             progress.classList.add('show');
-            fill.style.width = '0%';
+            fill.classList.add('indeterminate');
+            
+            // Show progress stages
+            const stages = [
+                'Scanning files...',
+                'Generating trees...',
+                'Saving trees to disk...'
+            ];
+            let stageIndex = 0;
+            
+            // Update progress text every 2 seconds
+            const progressInterval = setInterval(() => {
+                if (stageIndex < stages.length) {
+                    text.textContent = stages[stageIndex];
+                    stageIndex++;
+                }
+            }, 2000);
+            
+            text.textContent = stages[0];
 
             try {
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.index_files) {
-                    // Simulate progress
-                    for (let i = 0; i <= 100; i += 10) {
-                        fill.style.width = i + '%';
-                        text.textContent = `Indexing files... ${i}%`;
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-
                     const result = await window.pywebview.api.index_files();
                     
+                    clearInterval(progressInterval);
+                    fill.classList.remove('indeterminate');
                     fill.style.width = '100%';
-                    text.textContent = 'Files indexed successfully!';
+                    text.textContent = result.message || 'Indexing complete!';
                     
-                    status.textContent = `✓ ${result.message || 'Files indexed successfully'}`;
+                    status.textContent = `✓ ${result.message || 'Indexing complete!'}`;
                     status.classList.remove('error');
                     status.classList.add('show');
                     
                     setTimeout(() => {
                         progress.classList.remove('show');
                         status.classList.remove('show');
-                    }, 3000);
+                        fill.style.width = '0%';
+                    }, 4000);
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                fill.classList.remove('indeterminate');
                 status.textContent = '✗ Error indexing files: ' + error;
                 status.classList.add('error', 'show');
                 progress.classList.remove('show');
@@ -496,31 +524,48 @@
 
             btn.disabled = true;
             progress.classList.add('show');
-            fill.style.width = '0%';
+            fill.classList.add('indeterminate');
+            
+            // Show progress stages
+            const stages = [
+                'Scanning documents...',
+                'Analyzing content...',
+                'Generating index...',
+                'Saving to disk...'
+            ];
+            let stageIndex = 0;
+            
+            const progressInterval = setInterval(() => {
+                if (stageIndex < stages.length) {
+                    text.textContent = stages[stageIndex];
+                    stageIndex++;
+                }
+            }, 2000);
+            
+            text.textContent = stages[0];
 
             try {
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.index_documents) {
-                    for (let i = 0; i <= 100; i += 10) {
-                        fill.style.width = i + '%';
-                        text.textContent = `Indexing documents... ${i}%`;
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                    }
-
                     const result = await window.pywebview.api.index_documents();
                     
+                    clearInterval(progressInterval);
+                    fill.classList.remove('indeterminate');
                     fill.style.width = '100%';
-                    text.textContent = 'Documents indexed successfully!';
+                    text.textContent = result.message || 'Indexing complete!';
                     
-                    status.textContent = `✓ ${result.message || 'Documents indexed successfully'}`;
+                    status.textContent = `✓ ${result.message || 'Indexing complete!'}`;
                     status.classList.remove('error');
                     status.classList.add('show');
                     
                     setTimeout(() => {
                         progress.classList.remove('show');
                         status.classList.remove('show');
-                    }, 3000);
+                        fill.style.width = '0%';
+                    }, 4000);
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                fill.classList.remove('indeterminate');
                 status.textContent = '✗ Error indexing documents: ' + error;
                 status.classList.add('error', 'show');
                 progress.classList.remove('show');
@@ -538,31 +583,48 @@
 
             btn.disabled = true;
             progress.classList.add('show');
-            fill.style.width = '0%';
+            fill.classList.add('indeterminate');
+            
+            // Show progress stages
+            const stages = [
+                'Scanning images...',
+                'Generating descriptions...',
+                'Creating index...',
+                'Saving to disk...'
+            ];
+            let stageIndex = 0;
+            
+            const progressInterval = setInterval(() => {
+                if (stageIndex < stages.length) {
+                    text.textContent = stages[stageIndex];
+                    stageIndex++;
+                }
+            }, 2000);
+            
+            text.textContent = stages[0];
 
             try {
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images) {
-                    for (let i = 0; i <= 100; i += 10) {
-                        fill.style.width = i + '%';
-                        text.textContent = `Indexing images... ${i}%`;
-                        await new Promise(resolve => setTimeout(resolve, 150));
-                    }
-
                     const result = await window.pywebview.api.index_images();
                     
+                    clearInterval(progressInterval);
+                    fill.classList.remove('indeterminate');
                     fill.style.width = '100%';
-                    text.textContent = 'Images indexed successfully!';
+                    text.textContent = result.message || 'Indexing complete!';
                     
-                    status.textContent = `✓ ${result.message || 'Images indexed successfully'}`;
+                    status.textContent = `✓ ${result.message || 'Indexing complete!'}`;
                     status.classList.remove('error');
                     status.classList.add('show');
                     
                     setTimeout(() => {
                         progress.classList.remove('show');
                         status.classList.remove('show');
-                    }, 3000);
+                        fill.style.width = '0%';
+                    }, 4000);
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                fill.classList.remove('indeterminate');
                 status.textContent = '✗ Error indexing images: ' + error;
                 status.classList.add('error', 'show');
                 progress.classList.remove('show');

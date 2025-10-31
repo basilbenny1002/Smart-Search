@@ -1,26 +1,17 @@
+"""Data models for file and tree structures"""
 import string
 
+
 class Tree:
+    """Tree structure for fast prefix-based file search"""
+    
     # Mapping of Windows-valid symbols to safe attribute names
     SYMBOL_MAP = {
-        " ": "space",
-        "!": "exclamation",
-        "#": "hash",
-        "$": "dollar",
-        "%": "percent",
-        "&": "ampersand",
-        "'": "apostrophe",
-        ".": "dot",
-        "(": "lparen",
-        ")": "rparen",
-        "-": "dash",
-        "@": "at",
-        "^": "caret",
-        "_": "underscore",
-        "`": "backtick",
-        "{": "lbrace",
-        "}": "rbrace",
-        "~": "tilde",
+        " ": "space", "!": "exclamation", "#": "hash", "$": "dollar",
+        "%": "percent", "&": "ampersand", "'": "apostrophe", ".": "dot",
+        "(": "lparen", ")": "rparen", "-": "dash", "@": "at",
+        "^": "caret", "_": "underscore", "`": "backtick",
+        "{": "lbrace", "}": "rbrace", "~": "tilde",
     }
 
     # Digits → safe names
@@ -74,7 +65,10 @@ class Tree:
                 setattr(node, key, cls.from_dict(value))
         return node
 
+
 class FileData:
+    """Represents a file or folder with metadata"""
+    
     def __init__(self, name: str, path: str, type: str):
         self.file_name = name
         self.file_path = path
@@ -97,5 +91,3 @@ class FileData:
         obj = cls(data["file_name"], data["file_path"], data["file_type"])
         obj.length = data.get("length", len(obj.file_name))
         return obj
-
-
