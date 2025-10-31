@@ -2,3 +2,4 @@ __pycache__
 trees/
 GUI/
 test.py
+data/

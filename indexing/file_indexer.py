@@ -4,6 +4,7 @@ from typing import List
 from models.data_models import FileData
 from utils.helpers import is_hidden, is_accessible, timeit
 from config import SKIP_FOLDERS, SKIP_FILES, SKIP_PATTERNS, ROOT_INDEXING_PATH
+from pyuac import main_requires_admin
 
 
 def collect_entries(root_dir: str) -> List[FileData]:
@@ -43,7 +44,8 @@ def collect_entries(root_dir: str) -> List[FileData]:
     return file_list
 
 
-@timeit
+
+
 def index_files(root_dir: str = ROOT_INDEXING_PATH, progress_callback=None) -> dict:
     """
     Index all files and folders, building tree structures.
