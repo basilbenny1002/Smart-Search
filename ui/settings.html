@@ -13,7 +13,8 @@
 
         html {
             background: transparent;
-            overflow: hidden;
+            overflow-y: auto;
+            height: 100%;
         }
 
         body {
@@ -298,8 +299,107 @@
             margin-left: -140px;
             opacity: 0;
             transition: opacity 0.3s;
+        }
+
+        .path-selector-dropdown {
+            display: none;
+            margin-top: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(100, 120, 180, 0.2);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .path-selector-dropdown.show {
+            display: block;
+        }
+
+        .path-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            padding-right: 8px;
+        }
+
+        .path-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .path-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .path-list::-webkit-scrollbar-thumb {
+            background: rgba(100, 120, 180, 0.5);
+            border-radius: 4px;
+        }
+
+        .path-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 120, 180, 0.7);
+        }
+
+        .path-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 6px;
             font-size: 12px;
-            line-height: 1.4;
+            color: rgba(50, 50, 80, 0.9);
+        }
+
+        .path-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .path-item label {
+            flex: 1;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .add-path-btn, .index-now-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.8) 0%, rgba(150, 120, 200, 0.8) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+
+        .add-path-btn:hover, .index-now-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(100, 120, 180, 0.3);
+        }
+
+        .add-path-btn:disabled, .index-now-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .dropdown-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
         }
 
         .tooltip .tooltiptext::after {
@@ -416,6 +516,18 @@
                     </div>
                 </div>
             </button>
+            
+            <div class="path-selector-dropdown" id="imagePathSelector">
+                <div style="font-size: 13px; font-weight: 600; color: rgba(50, 50, 80, 0.9); margin-bottom: 10px;">
+                    Select Paths to Index:
+                </div>
+                <div class="path-list" id="imagePathList"></div>
+                <div class="dropdown-actions">
+                    <button class="add-path-btn" id="addPathBtn">Add Path</button>
+                    <button class="index-now-btn" id="indexNowBtn">Index Now</button>
+                </div>
+            </div>
+            
             <div class="progress-container" id="imagesProgress">
                 <div class="progress-bar">
                     <div class="progress-fill" id="imagesProgressFill"></div>
@@ -455,6 +567,124 @@
 
     <script>
         let isAutoIndexEnabled = false;
+        let imagePaths = [];
+        
+        // Initialize default image paths
+        async function initializeImagePaths() {
+            try {
+                // Try to get username first
+                let username = 'User';
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_username) {
+                    try {
+                        username = await window.pywebview.api.get_username();
+                    } catch (e) {
+                        console.log('Could not get username, using default');
+                    }
+                }
+                
+                // Set default paths - always show these
+                imagePaths = [
+                    { path: `C:\\Users\\${username}\\Documents`, checked: true },
+                    { path: `C:\\Users\\${username}\\Pictures`, checked: true },
+                    { path: `C:\\Users\\${username}\\Pictures\\Screenshots`, checked: true },
+                    { path: `C:\\Users\\${username}\\OneDrive\\Pictures`, checked: true },
+                    { path: `C:\\Users\\${username}\\OneDrive\\Pictures\\Screenshots`, checked: true },
+                    { path: `C:\\Users\\${username}\\OneDrive\\Documents`, checked: true },
+                    { path: `C:\\Users\\${username}\\Desktop`, checked: true }
+                ];
+                
+                console.log('Initialized paths:', imagePaths);
+                renderPathList();
+            } catch (error) {
+                console.error('Error initializing paths:', error);
+            }
+        }
+        
+        function renderPathList() {
+            const pathList = document.getElementById('imagePathList');
+            if (!pathList) {
+                console.error('Path list element not found!');
+                return;
+            }
+            
+            pathList.innerHTML = '';
+            console.log('Rendering paths:', imagePaths);
+            
+            imagePaths.forEach((item, index) => {
+                const pathItem = document.createElement('div');
+                pathItem.className = 'path-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.checked;
+                checkbox.id = `path-${index}`;
+                checkbox.addEventListener('change', (e) => {
+                    imagePaths[index].checked = e.target.checked;
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = `path-${index}`;
+                label.textContent = item.path;
+                
+                pathItem.appendChild(checkbox);
+                pathItem.appendChild(label);
+                pathList.appendChild(pathItem);
+            });
+        }
+        
+        // Toggle dropdown when Index Images button is clicked
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait a bit for pywebview to be ready
+            setTimeout(() => {
+                initializeImagePaths();
+            }, 100);
+            
+            const indexImagesBtn = document.getElementById('indexImagesBtn');
+            const pathSelector = document.getElementById('imagePathSelector');
+            
+            if (indexImagesBtn && pathSelector) {
+                indexImagesBtn.addEventListener('click', () => {
+                    console.log('Index Images button clicked');
+                    pathSelector.classList.toggle('show');
+                });
+            } else {
+                console.error('Button or selector not found!');
+            }
+            
+            // Add path button
+            document.getElementById('addPathBtn').addEventListener('click', async () => {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.select_folder) {
+                    try {
+                        const selectedPath = await window.pywebview.api.select_folder();
+                        if (selectedPath) {
+                            imagePaths.push({ path: selectedPath, checked: true });
+                            renderPathList();
+                        }
+                    } catch (error) {
+                        console.error('Error selecting folder:', error);
+                    }
+                }
+            });
+            
+            // Index now button
+            document.getElementById('indexNowBtn').addEventListener('click', () => {
+                const selectedPaths = imagePaths
+                    .filter(item => item.checked)
+                    .map(item => item.path);
+                
+                if (selectedPaths.length > 0) {
+                    indexImagesWithPaths(selectedPaths);
+                } else {
+                    const status = document.getElementById('statusMessage');
+                    status.textContent = '⚠ Please select at least one path to index';
+                    status.classList.add('show');
+                    setTimeout(() => status.classList.remove('show'), 3000);
+                }
+            });
+            
+            // Auto-index toggle
+            document.getElementById('autoIndexToggle').addEventListener('click', toggleAutoIndex);
+        });
 
         async function indexFiles() {
             const btn = document.getElementById('indexFilesBtn');
@@ -574,14 +804,15 @@
             }
         }
 
-        async function indexImages() {
-            const btn = document.getElementById('indexImagesBtn');
+        async function indexImagesWithPaths(paths) {
             const progress = document.getElementById('imagesProgress');
             const fill = document.getElementById('imagesProgressFill');
             const text = document.getElementById('imagesProgressText');
             const status = document.getElementById('statusMessage');
+            const pathSelector = document.getElementById('imagePathSelector');
+            const indexNowBtn = document.getElementById('indexNowBtn');
 
-            btn.disabled = true;
+            indexNowBtn.disabled = true;
             progress.classList.add('show');
             fill.classList.add('indeterminate');
             
@@ -604,8 +835,8 @@
             text.textContent = stages[0];
 
             try {
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images) {
-                    const result = await window.pywebview.api.index_images();
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images_with_paths) {
+                    const result = await window.pywebview.api.index_images_with_paths(paths);
                     
                     clearInterval(progressInterval);
                     fill.classList.remove('indeterminate');
@@ -615,6 +846,9 @@
                     status.textContent = `✓ ${result.message || 'Indexing complete!'}`;
                     status.classList.remove('error');
                     status.classList.add('show');
+                    
+                    // Hide dropdown after successful indexing
+                    pathSelector.classList.remove('show');
                     
                     setTimeout(() => {
                         progress.classList.remove('show');
@@ -629,8 +863,13 @@
                 status.classList.add('error', 'show');
                 progress.classList.remove('show');
             } finally {
-                btn.disabled = false;
+                indexNowBtn.disabled = false;
             }
+        }
+
+        async function indexImages() {
+            // This is kept for backward compatibility but not used anymore
+            // The dropdown handles image indexing now
         }
 
         async function toggleAutoIndex() {

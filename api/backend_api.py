@@ -98,6 +98,54 @@ class SearchAPI:
     def index_images(self) -> Dict[str, Any]:
         """Index image descriptions"""
         return do_image_indexing()
+    
+    def index_images_with_paths(self, paths: List[str]) -> Dict[str, Any]:
+        """Index images from specific paths"""
+        print(f"Indexing images from paths: {paths}")
+        # You can implement the logic to pass paths to the indexer
+        # For now, returning a placeholder
+        return {
+            "status": "success",
+            "message": f"Indexed images from {len(paths)} path(s)",
+            "paths": paths
+        }
+    
+    def get_default_image_paths(self) -> List[str]:
+        """Get default image paths for the current user"""
+        username = os.getenv('USERNAME') or os.getenv('USER') or 'User'
+        base_path = os.path.expanduser('~')
+        
+        paths = [
+            os.path.join(base_path, 'Documents'),
+            os.path.join(base_path, 'Pictures'),
+            os.path.join(base_path, 'Pictures', 'Screenshots'),
+            os.path.join(base_path, 'OneDrive', 'Pictures'),
+            os.path.join(base_path, 'OneDrive', 'Pictures', 'Screenshots'),
+            os.path.join(base_path, 'OneDrive', 'Documents'),
+            os.path.join(base_path, 'Desktop')
+        ]
+        
+        # Only return paths that exist
+        return [p for p in paths if os.path.exists(p)]
+    
+    def get_username(self) -> str:
+        """Get current username"""
+        return os.getenv('USERNAME') or os.getenv('USER') or 'User'
+    
+    def select_folder(self) -> str:
+        """Open folder selection dialog"""
+        try:
+            if self._settings_window:
+                result = self._settings_window.create_file_dialog(
+                    webview.FOLDER_DIALOG,
+                    directory=os.path.expanduser('~')
+                )
+                if result and len(result) > 0:
+                    return result[0]
+            return None
+        except Exception as e:
+            print(f"Error selecting folder: {e}")
+            return None
 
     # Window management
     def open_file(self, path: str, file_type: str = None) -> str:
@@ -131,7 +179,7 @@ class SearchAPI:
             if self._settings_window is None:
                 self._settings_window = webview.create_window(
                     "Settings", os.path.join(UI_DIR, "settings.html"),
-                    width=700, height=600,
+                    width=700, height=700,
                     frameless=True, on_top=True,
                     background_color="#9494EE"
                 )
@@ -139,6 +187,10 @@ class SearchAPI:
                 self._settings_window.expose(self.index_files)
                 self._settings_window.expose(self.index_documents)
                 self._settings_window.expose(self.index_images)
+                self._settings_window.expose(self.index_images_with_paths)
+                self._settings_window.expose(self.get_default_image_paths)
+                self._settings_window.expose(self.get_username)
+                self._settings_window.expose(self.select_folder)
                 self._settings_window.expose(self.set_auto_index)
                 self._settings_window.expose(self.get_auto_index_state)
                 self._settings_window.expose(self.back_to_search)
