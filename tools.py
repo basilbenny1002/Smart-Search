@@ -81,10 +81,7 @@ def collect_entries(root_dir):
     """
     Collect accessible files and folders (skipping hidden/system and special dirs).
     Returns list of FileData(name, full_path, type).
-    """
-    # Request admin privileges for better file access
-    # run_as_admin()
-    
+    """  
     file_list = []
 
     # Common system or junk folders to skip
@@ -100,7 +97,6 @@ def collect_entries(root_dir):
         '$av_asw$',
         'found.000',
     }
-
     skip_files = {
         'pagefile.sys',
         'hiberfil.sys',

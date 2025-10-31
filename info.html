@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Information</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            background: transparent;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, rgba(173, 216, 230, 0.95) 0%, rgba(216, 191, 216, 0.95) 100%);
+            -webkit-app-region: drag;
+            overflow-y: auto;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(50, 50, 80, 0.95);
+        }
+
+        .back-button {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-button:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+            transform: translateY(-1px);
+        }
+
+        .back-button:active {
+            transform: translateY(0);
+        }
+
+        .back-button svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(50, 50, 80, 0.95);
+            margin-bottom: 12px;
+        }
+
+        .info-content {
+            font-size: 14px;
+            line-height: 1.8;
+            color: rgba(50, 50, 80, 0.85);
+        }
+
+        .info-content ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .info-content li {
+            margin-bottom: 8px;
+        }
+
+        .info-content code {
+            background: rgba(100, 120, 180, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: rgba(100, 120, 180, 1);
+        }
+
+        .info-content strong {
+            color: rgba(50, 50, 80, 0.95);
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.1) 0%, rgba(150, 120, 200, 0.1) 100%);
+            border-left: 3px solid rgba(100, 150, 200, 0.8);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        .shortcut-list {
+            margin-top: 12px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .shortcut-item:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-key {
+            background: rgba(100, 120, 180, 0.15);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(100, 120, 180, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Information</h1>
+            <button class="back-button" id="backBtn">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Search
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Getting Started</div>
+            <div class="info-content">
+                <p>Welcome to the Fastest Search tool! Follow these steps to get started:</p>
+                <ol>
+                    <li>Run <code>main.py</code> to index your files initially</li>
+                    <li>Start the search interface with <code>Htmlgui.py</code></li>
+                    <li>Press <code>Ctrl+Space</code> to open/close the search window</li>
+                    <li>Go to <strong>Settings</strong> to index your content:
+                        <ul style="margin-left: 20px; margin-top: 6px;">
+                            <li>Click <strong>Index Files</strong> for file/folder search</li>
+                            <li>Click <strong>Index Documents</strong> for text content search</li>
+                            <li>Click <strong>Index Images</strong> for image description search</li>
+                        </ul>
+                    </li>
+                    <li>Start searching! Type anything in the search bar</li>
+                </ol>
+                
+                <div class="highlight-box">
+                    <strong>Tip:</strong> Enable "Auto-Index New Files" in Settings to automatically index new files as they're created!
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Keyboard Shortcuts</div>
+            <div class="info-content">
+                <div class="shortcut-list">
+                    <div class="shortcut-item">
+                        <span>Toggle Search Window</span>
+                        <span class="shortcut-key">Ctrl+Space</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Navigate Results Down</span>
+                        <span class="shortcut-key">↓</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Navigate Results Up</span>
+                        <span class="shortcut-key">↑</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Open Selected File</span>
+                        <span class="shortcut-key">Enter</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>Clear Search / Close</span>
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Search Types</div>
+            <div class="info-content">
+                <p><strong>Normal Search:</strong> Search files and folders by name. Ultra-fast tree-based search.</p>
+                <p style="margin-top: 8px;"><strong>Text Search:</strong> Search within document contents. Great for finding specific text in your files.</p>
+                <p style="margin-top: 8px;"><strong>Image Search:</strong> Search images by their descriptions. Uses AI-generated descriptions for semantic search.</p>
+                
+                <div class="highlight-box" style="margin-top: 16px;">
+                    <strong>Filters:</strong> Use the filter buttons to show only specific file types (folders, images, videos, documents, etc.)
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">About</div>
+            <div class="info-content">
+                <p>Fastest Search is a lightning-fast file search tool using advanced tree-based indexing for instant results.</p>
+                <p style="margin-top: 10px;">Version: 1.0.0</p>
+                <p style="margin-top: 4px;">Built with Python, pywebview, and modern web technologies.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.back_to_search) {
+                window.pywebview.api.back_to_search();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -59,6 +59,9 @@ class API:
         self._loaded: set[str] = set()
         self._window = None  # set in main
         self._visible = True
+        self._settings_window = None
+        self._info_window = None
+        self._auto_index_enabled = False
 
     def _ensure_letter_loaded(self, ch: str) -> None:
         """Lazy-load the first-character tree for letters, digits, and mapped symbols.
@@ -215,6 +218,172 @@ class API:
         except Exception as e:
             return f"error: {e}"
 
+    def open_settings(self) -> str:  # exposed
+        """Open the settings window"""
+        try:
+            if self._settings_window is None:
+                self._settings_window = webview.create_window(
+                    "Settings",
+                    "settings.html",
+                    width=700,
+                    height=600,
+                    frameless=True,
+                    on_top=True,
+                    transparent=False,
+                    background_color="#9494EE"
+                )
+                # Expose API methods to settings window
+                self._settings_window.expose(self.index_files)
+                self._settings_window.expose(self.index_documents)
+                self._settings_window.expose(self.index_images)
+                self._settings_window.expose(self.set_auto_index)
+                self._settings_window.expose(self.get_auto_index_state)
+                self._settings_window.expose(self.back_to_search)
+            else:
+                self._settings_window.show()
+            return "ok"
+        except Exception as e:
+            return f"error: {e}"
+
+    def open_info(self) -> str:  # exposed
+        """Open the info window"""
+        try:
+            if self._info_window is None:
+                self._info_window = webview.create_window(
+                    "Information",
+                    "info.html",
+                    width=700,
+                    height=600,
+                    frameless=True,
+                    on_top=True,
+                    transparent=False,
+                    background_color="#9494EE"
+                )
+                # Expose API method to info window
+                self._info_window.expose(self.back_to_search)
+            else:
+                self._info_window.show()
+            return "ok"
+        except Exception as e:
+            return f"error: {e}"
+
+    def back_to_search(self) -> str:  # exposed
+        """Close settings/info and return to search window"""
+        try:
+            if self._settings_window:
+                self._settings_window.hide()
+            if self._info_window:
+                self._info_window.hide()
+            if self._window:
+                self._window.show()
+                self._visible = True
+            return "ok"
+        except Exception as e:
+            return f"error: {e}"
+
+    def index_files(self) -> Dict[str, Any]:  # exposed
+        """
+        Placeholder function to index all files and folders.
+        TODO: Implement actual file indexing logic
+        """
+        try:
+            # Simulate indexing process
+            import time
+            time.sleep(1)  # Simulate work being done
+            
+            # Return success message
+            return {
+                "status": "success",
+                "message": "Successfully indexed 1,234 files and folders",
+                "count": 1234
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to index files: {e}",
+                "count": 0
+            }
+
+    def index_documents(self) -> Dict[str, Any]:  # exposed
+        """
+        Placeholder function to index document contents for text search.
+        TODO: Implement actual document content indexing logic
+        """
+        try:
+            # Simulate indexing process
+            import time
+            time.sleep(1.5)  # Simulate work being done
+            
+            # Return success message
+            return {
+                "status": "success",
+                "message": "Successfully indexed 456 documents",
+                "count": 456
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to index documents: {e}",
+                "count": 0
+            }
+
+    def index_images(self) -> Dict[str, Any]:  # exposed
+        """
+        Placeholder function to generate image descriptions for search.
+        TODO: Implement actual image description generation logic
+        """
+        try:
+            # Simulate indexing process
+            import time
+            time.sleep(2)  # Simulate work being done
+            
+            # Return success message
+            return {
+                "status": "success",
+                "message": "Successfully indexed 789 images",
+                "count": 789
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to index images: {e}",
+                "count": 0
+            }
+
+    def set_auto_index(self, enabled: bool) -> Dict[str, Any]:  # exposed
+        """
+        Placeholder function to enable/disable auto-indexing.
+        TODO: Implement actual autostart script logic
+        """
+        try:
+            self._auto_index_enabled = enabled
+            
+            if enabled:
+                # TODO: Add script to Windows autostart
+                # Example: Create a shortcut in the Startup folder
+                message = "Auto-indexing enabled. Script added to autostart."
+            else:
+                # TODO: Remove script from Windows autostart
+                message = "Auto-indexing disabled. Script removed from autostart."
+            
+            return {
+                "status": "success",
+                "message": message,
+                "enabled": enabled
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to toggle auto-index: {e}",
+                "enabled": self._auto_index_enabled
+            }
+
+    def get_auto_index_state(self) -> Dict[str, Any]:  # exposed
+        """Get the current auto-index state"""
+        return {
+            "enabled": self._auto_index_enabled
+        }
+
 
 def main() -> None:
     api = API()
@@ -223,7 +392,7 @@ def main() -> None:
         "Search Bar",
         "index.html",
         width=800,
-        height=200,
+        height=350,  
         frameless=True,
         on_top=True,
         transparent=False,  # Disable transparency to avoid white box
@@ -238,6 +407,8 @@ def main() -> None:
     window.expose(api.toggle_window)
     window.expose(api.show_window)
     window.expose(api.hide_window)
+    window.expose(api.open_settings)
+    window.expose(api.open_info)
     api.bind_window(window)
 
     # Optional global hotkey (Ctrl+Space) to toggle window visibility
@@ -256,9 +427,6 @@ def main() -> None:
 
     t = threading.Thread(target=_hotkey_thread, daemon=True)
     t.start()
-
-    # Start UI - CEF doesn't support Python 3.12, use default backend
-    # Try edgechromium for better transparency (auto-detected on Windows)
     webview.start(debug=False)
 
 

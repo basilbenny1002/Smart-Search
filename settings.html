@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            background: transparent;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, rgba(173, 216, 230, 0.95) 0%, rgba(216, 191, 216, 0.95) 100%);
+            -webkit-app-region: drag;
+            overflow-y: auto;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(50, 50, 80, 0.95);
+        }
+
+        .back-button {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-button:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+            transform: translateY(-1px);
+        }
+
+        .back-button:active {
+            transform: translateY(0);
+        }
+
+        .back-button svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(31, 38, 135, 0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(50, 50, 80, 0.95);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title svg {
+            width: 20px;
+            height: 20px;
+            stroke: rgba(100, 120, 180, 0.8);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .index-button {
+            width: 100%;
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 14px 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .index-button:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(100, 120, 180, 0.3);
+        }
+
+        .index-button:active {
+            transform: translateY(0);
+        }
+
+        .index-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .index-button-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .index-button svg {
+            width: 20px;
+            height: 20px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .button-text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .button-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .button-desc {
+            font-size: 11px;
+            opacity: 0.85;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, rgba(100, 200, 150, 1) 0%, rgba(100, 150, 200, 1) 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 11px;
+            color: rgba(50, 50, 80, 0.75);
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .auto-index-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+        }
+
+        .auto-index-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: rgba(50, 50, 80, 0.9);
+        }
+
+        .tooltip-icon {
+            width: 16px;
+            height: 16px;
+            stroke: rgba(100, 120, 180, 0.7);
+            stroke-width: 2;
+            fill: none;
+            cursor: help;
+        }
+
+        .tooltip-icon:hover {
+            stroke: rgba(100, 120, 180, 1);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(150, 150, 150, 0.3);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active .toggle-slider {
+            left: 27px;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: rgba(50, 50, 80, 0.95);
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(50, 50, 80, 0.95) transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .status-message {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(100, 200, 150, 0.2);
+            border-left: 3px solid rgba(100, 200, 150, 1);
+            border-radius: 6px;
+            font-size: 12px;
+            color: rgba(50, 50, 80, 0.9);
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.error {
+            background: rgba(230, 100, 100, 0.2);
+            border-left-color: rgba(230, 100, 100, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Settings</h1>
+            <button class="back-button" id="backBtn">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Search
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                    <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+                    <polyline points="7.5 19.79 7.5 14.6 3 12"/>
+                    <polyline points="21 12 16.5 14.6 16.5 19.79"/>
+                </svg>
+                Index Management
+            </div>
+
+            <button class="index-button" id="indexFilesBtn">
+                <div class="index-button-content">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>
+                        <polyline points="13 2 13 9 20 9"/>
+                    </svg>
+                    <div class="button-text">
+                        <span class="button-title">Index Files</span>
+                        <span class="button-desc">Index all files and folders</span>
+                    </div>
+                </div>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+            <div class="progress-container" id="filesProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="filesProgressFill"></div>
+                </div>
+                <div class="progress-text" id="filesProgressText">Indexing files...</div>
+            </div>
+
+            <button class="index-button" id="indexDocumentsBtn">
+                <div class="index-button-content">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <div class="button-text">
+                        <span class="button-title">Index Documents</span>
+                        <span class="button-desc">Index document contents for text search</span>
+                    </div>
+                </div>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+            <div class="progress-container" id="documentsProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="documentsProgressFill"></div>
+                </div>
+                <div class="progress-text" id="documentsProgressText">Indexing documents...</div>
+            </div>
+
+            <button class="index-button" id="indexImagesBtn">
+                <div class="index-button-content">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <div class="button-text">
+                        <span class="button-title">Index Images</span>
+                        <span class="button-desc">Generate image descriptions for search</span>
+                    </div>
+                </div>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+            <div class="progress-container" id="imagesProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="imagesProgressFill"></div>
+                </div>
+                <div class="progress-text" id="imagesProgressText">Indexing images...</div>
+            </div>
+
+            <div id="statusMessage" class="status-message"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                Automation
+            </div>
+
+            <div class="auto-index-section">
+                <div class="auto-index-label">
+                    <span>Auto-Index New Files</span>
+                    <div class="tooltip">
+                        <svg class="tooltip-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        <span class="tooltiptext">Clicking this will add a script to autostart, which will automatically index all new images, text files, and documents when they're created. You can disable this and index manually whenever you prefer.</span>
+                    </div>
+                </div>
+                <div class="toggle-switch" id="autoIndexToggle">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isAutoIndexEnabled = false;
+
+        async function indexFiles() {
+            const btn = document.getElementById('indexFilesBtn');
+            const progress = document.getElementById('filesProgress');
+            const fill = document.getElementById('filesProgressFill');
+            const text = document.getElementById('filesProgressText');
+            const status = document.getElementById('statusMessage');
+
+            btn.disabled = true;
+            progress.classList.add('show');
+            fill.style.width = '0%';
+
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_files) {
+                    // Simulate progress
+                    for (let i = 0; i <= 100; i += 10) {
+                        fill.style.width = i + '%';
+                        text.textContent = `Indexing files... ${i}%`;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    const result = await window.pywebview.api.index_files();
+                    
+                    fill.style.width = '100%';
+                    text.textContent = 'Files indexed successfully!';
+                    
+                    status.textContent = `✓ ${result.message || 'Files indexed successfully'}`;
+                    status.classList.remove('error');
+                    status.classList.add('show');
+                    
+                    setTimeout(() => {
+                        progress.classList.remove('show');
+                        status.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (error) {
+                status.textContent = '✗ Error indexing files: ' + error;
+                status.classList.add('error', 'show');
+                progress.classList.remove('show');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function indexDocuments() {
+            const btn = document.getElementById('indexDocumentsBtn');
+            const progress = document.getElementById('documentsProgress');
+            const fill = document.getElementById('documentsProgressFill');
+            const text = document.getElementById('documentsProgressText');
+            const status = document.getElementById('statusMessage');
+
+            btn.disabled = true;
+            progress.classList.add('show');
+            fill.style.width = '0%';
+
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_documents) {
+                    for (let i = 0; i <= 100; i += 10) {
+                        fill.style.width = i + '%';
+                        text.textContent = `Indexing documents... ${i}%`;
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    const result = await window.pywebview.api.index_documents();
+                    
+                    fill.style.width = '100%';
+                    text.textContent = 'Documents indexed successfully!';
+                    
+                    status.textContent = `✓ ${result.message || 'Documents indexed successfully'}`;
+                    status.classList.remove('error');
+                    status.classList.add('show');
+                    
+                    setTimeout(() => {
+                        progress.classList.remove('show');
+                        status.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (error) {
+                status.textContent = '✗ Error indexing documents: ' + error;
+                status.classList.add('error', 'show');
+                progress.classList.remove('show');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function indexImages() {
+            const btn = document.getElementById('indexImagesBtn');
+            const progress = document.getElementById('imagesProgress');
+            const fill = document.getElementById('imagesProgressFill');
+            const text = document.getElementById('imagesProgressText');
+            const status = document.getElementById('statusMessage');
+
+            btn.disabled = true;
+            progress.classList.add('show');
+            fill.style.width = '0%';
+
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images) {
+                    for (let i = 0; i <= 100; i += 10) {
+                        fill.style.width = i + '%';
+                        text.textContent = `Indexing images... ${i}%`;
+                        await new Promise(resolve => setTimeout(resolve, 150));
+                    }
+
+                    const result = await window.pywebview.api.index_images();
+                    
+                    fill.style.width = '100%';
+                    text.textContent = 'Images indexed successfully!';
+                    
+                    status.textContent = `✓ ${result.message || 'Images indexed successfully'}`;
+                    status.classList.remove('error');
+                    status.classList.add('show');
+                    
+                    setTimeout(() => {
+                        progress.classList.remove('show');
+                        status.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (error) {
+                status.textContent = '✗ Error indexing images: ' + error;
+                status.classList.add('error', 'show');
+                progress.classList.remove('show');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function toggleAutoIndex() {
+            const toggle = document.getElementById('autoIndexToggle');
+            const status = document.getElementById('statusMessage');
+            
+            isAutoIndexEnabled = !isAutoIndexEnabled;
+            toggle.classList.toggle('active', isAutoIndexEnabled);
+
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.set_auto_index) {
+                    const result = await window.pywebview.api.set_auto_index(isAutoIndexEnabled);
+                    
+                    status.textContent = isAutoIndexEnabled 
+                        ? '✓ Auto-indexing enabled. Script added to autostart.'
+                        : '✓ Auto-indexing disabled.';
+                    status.classList.remove('error');
+                    status.classList.add('show');
+                    
+                    setTimeout(() => {
+                        status.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (error) {
+                status.textContent = '✗ Error toggling auto-index: ' + error;
+                status.classList.add('error', 'show');
+                isAutoIndexEnabled = !isAutoIndexEnabled;
+                toggle.classList.toggle('active', isAutoIndexEnabled);
+            }
+        }
+
+        document.getElementById('indexFilesBtn').addEventListener('click', indexFiles);
+        document.getElementById('indexDocumentsBtn').addEventListener('click', indexDocuments);
+        document.getElementById('indexImagesBtn').addEventListener('click', indexImages);
+        document.getElementById('autoIndexToggle').addEventListener('click', toggleAutoIndex);
+        
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.back_to_search) {
+                window.pywebview.api.back_to_search();
+            }
+        });
+
+        // Load auto-index state on page load
+        window.addEventListener('load', async () => {
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_auto_index_state) {
+                    const state = await window.pywebview.api.get_auto_index_state();
+                    isAutoIndexEnabled = state.enabled || false;
+                    document.getElementById('autoIndexToggle').classList.toggle('active', isAutoIndexEnabled);
+                }
+            } catch (error) {
+                console.log('Could not load auto-index state:', error);
+            }
+        });
+    </script>
+</body>
+</html>

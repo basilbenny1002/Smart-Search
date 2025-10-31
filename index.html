@@ -35,6 +35,94 @@
             margin: 0;
         }
 
+        .extended-area {
+            -webkit-app-region: no-drag;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            background: transparent;
+            position: relative;
+        }
+
+        .hint-text {
+            font-size: 16px;
+            color: rgba(100, 100, 150, 0.6);
+            font-style: italic;
+        }
+
+        .bottom-buttons {
+            display: flex;
+            gap: 8px;
+            position: fixed;
+            bottom: 12px;
+            right: 12px;
+            z-index: 1000;
+        }
+
+        .bottom-buttons.hidden {
+            display: none;
+        }
+
+        .loading-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: rgba(100, 100, 150, 0.7);
+            font-style: italic;
+        }
+
+        .loading-indicator.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(100, 150, 200, 0.3);
+            border-top-color: rgba(100, 150, 200, 0.9);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .icon-button {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.7) 0%, rgba(150, 120, 200, 0.7) 100%);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .icon-button:hover {
+            background: linear-gradient(135deg, rgba(100, 150, 200, 0.9) 0%, rgba(150, 120, 200, 0.9) 100%);
+            transform: translateY(-1px);
+        }
+
+        .icon-button:active {
+            transform: translateY(0);
+        }
+
+        .icon-button svg {
+            width: 14px;
+            height: 14px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
         .search-wrapper {
             -webkit-app-region: no-drag;
             padding: 12px;
@@ -405,8 +493,31 @@
                 </div>
             </div>
         </div>
+        <div class="extended-area">
+            <span class="hint-text" id="hintText">Start typing to search...</span>
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="spinner"></div>
+                <span>Searching...</span>
+            </div>
+            <div class="bottom-buttons" id="bottomButtons">
+                <button class="icon-button" id="infoBtn" title="Information">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    Info
+                </button>
+                <button class="icon-button" id="settingsBtn" title="Settings">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v10M1 12h6m6 0h10"/>
+                    </svg>
+                    Settings
+                </button>
+            </div>
+        </div>
         <div class="results-container" id="resultsContainer">
-            <div class="no-results">Start typing to search...</div>
         </div>
     </div>
 
@@ -449,6 +560,9 @@
         const searchIconContainer = document.getElementById('searchIconContainer');
         const dropdownToggle = document.getElementById('dropdownToggle');
         const dropdownMenu = document.getElementById('dropdownMenu');
+        const hintText = document.getElementById('hintText');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const bottomButtons = document.getElementById('bottomButtons');
 
         searchIconContainer.innerHTML = getSvgIcon('search');
 
@@ -456,15 +570,15 @@
             e.stopPropagation();
             if (dropdownMenu.classList.contains('show')) {
                 dropdownMenu.classList.remove('show');
-                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(200); } } catch {}
             } else {
                 dropdownMenu.classList.add('show');
-                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(400); } } catch {}
             }
         });
 
         document.addEventListener('click', () => {
-            dropdownMenu.classList.remove('show');
+            if (dropdownMenu.classList.contains('show')) {
+                dropdownMenu.classList.remove('show');
+            }
         });
 
         document.querySelectorAll('.dropdown-item').forEach(item => {
@@ -473,7 +587,6 @@
                 item.classList.add('active');
                 currentSearchType = item.getAttribute('data-search-type');
                 dropdownMenu.classList.remove('show');
-                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(200); } } catch {}
                 performSearch(searchInput.value);
             });
         });
@@ -481,13 +594,21 @@
         async function performSearch(query) {
             console.log('performSearch called with query:', query);
             if (!query.trim()) {
-                resultsContainer.innerHTML = '<div class="no-results">Start typing to search...</div>';
+                resultsContainer.innerHTML = '';
                 resultsContainer.classList.remove('show');
                 currentResults = [];
                 selectedIndex = -1;
-                try { if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) { window.pywebview.api.resize_window(90); } } catch {}
+                hintText.style.display = 'block';
+                hintText.textContent = 'Start typing to search...';
+                loadingIndicator.classList.remove('show');
+                bottomButtons.classList.remove('hidden');
                 return;
             }
+
+            // Show loading, hide hint and buttons
+            hintText.style.display = 'none';
+            loadingIndicator.classList.add('show');
+            bottomButtons.classList.add('hidden');
 
             let results = [];
             try {
@@ -497,6 +618,9 @@
             } catch (e) {
                 console.warn('Backend search failed:', e);
             }
+
+            // Hide loading indicator
+            loadingIndicator.classList.remove('show');
 
             const normalized = (results || []).map(r => ({
                 name: r.name || r.file_name || '',
@@ -520,33 +644,17 @@
             currentResults = filtered;
             selectedIndex = -1;
             displayResults(filtered);
-            if (filtered.length > 0) {
-                const itemHeight = 34;
-                const baseHeight = 90;
-                const minHeight = 300;
-                const maxHeight = 700;
-                const calculated = baseHeight + itemHeight * (filtered.length + 2);
-                const target = Math.min(maxHeight, Math.max(minHeight, calculated));
-                try {
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
-                        await window.pywebview.api.resize_window(target);
-                    }
-                } catch {}
-            } else {
-                try {
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
-                        await window.pywebview.api.resize_window(90);
-                    }
-                } catch {}
-            }
         }
 
         function displayResults(results) {
             if (results.length === 0) {
                 resultsContainer.innerHTML = '<div class="no-results">No results found</div>';
-                resultsContainer.classList.remove('show');
+                resultsContainer.classList.add('show');
+                hintText.style.display = 'none';
                 return;
             }
+
+            hintText.style.display = 'none';
 
             resultsContainer.innerHTML = results.map((item, index) => {
                 if (currentSearchType === 'image' && item.image_url) {
@@ -646,8 +754,13 @@
             } else if (e.key === 'Escape') {
                 searchInput.value = '';
                 resultsContainer.classList.remove('show');
+                resultsContainer.innerHTML = '';
                 currentResults = [];
                 selectedIndex = -1;
+                hintText.style.display = 'block';
+                hintText.textContent = 'Start typing to search...';
+                loadingIndicator.classList.remove('show');
+                bottomButtons.classList.remove('hidden');
             }
         });
 
@@ -689,6 +802,18 @@
                 openResult(currentResults[selectedIndex]);
             } else {
                 performSearch(searchInput.value);
+            }
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_settings) {
+                window.pywebview.api.open_settings();
+            }
+        });
+
+        document.getElementById('infoBtn').addEventListener('click', () => {
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_info) {
+                window.pywebview.api.open_info();
             }
         });
 
