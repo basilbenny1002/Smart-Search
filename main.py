@@ -31,6 +31,8 @@ def main():
     window.expose(api.toggle_window)
     window.expose(api.open_settings)
     window.expose(api.open_info)
+    window.expose(api.check_embeddings_loaded)
+    window.expose(api.preload_image_embeddings)
     
     api.bind_window(window)
 

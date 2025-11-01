@@ -8,7 +8,7 @@ from search.file_search import search_tree, load_trees, trees
 from indexing.file_indexer import index_files as do_file_indexing
 from indexing.image_indexer import index_images as do_image_indexing
 from indexing.text_indexer import index_documents as do_text_indexing
-from search.image_search import search_images
+from search.image_search import search_images, is_embeddings_loaded, force_load_embeddings
 from search.text_search import search_text_content
 from utils.helpers import clean_query, get_value
 from config import UI_DIR
@@ -72,8 +72,12 @@ class SearchAPI:
         """Image search by description"""
         try:
             results = search_images(query)
-            return [{"name": os.path.basename(p), "path": p, "type": "image"} 
-                    for p in results[:50]]
+            return [{
+                "name": os.path.basename(p), 
+                "path": p, 
+                "type": "image",
+                "image_url": f"file:///{p.replace(os.sep, '/')}" 
+            } for p in results[:50]]
         except Exception as e:
             print(f"Image search error: {e}")
             return []
@@ -95,20 +99,46 @@ class SearchAPI:
         """Index document contents"""
         return do_text_indexing()
 
-    def index_images(self) -> Dict[str, Any]:
-        """Index image descriptions"""
-        return do_image_indexing()
+    def index_images(self, paths: List[str] = None) -> Dict[str, Any]:
+        """Index images from specified paths"""
+        if not paths:
+            # If no paths provided, use default paths
+            paths = self.get_default_image_paths()
+        
+        print(f"Indexing images from {len(paths)} path(s): {paths}")
+        return do_image_indexing(paths)
     
-    def index_images_with_paths(self, paths: List[str]) -> Dict[str, Any]:
-        """Index images from specific paths"""
-        print(f"Indexing images from paths: {paths}")
-        # You can implement the logic to pass paths to the indexer
-        # For now, returning a placeholder
+    # Image search embedding management
+    def check_embeddings_loaded(self) -> Dict[str, Any]:
+        """Check if image embeddings are currently loaded"""
         return {
-            "status": "success",
-            "message": f"Indexed images from {len(paths)} path(s)",
-            "paths": paths
+            "loaded": is_embeddings_loaded()
         }
+    
+    def preload_image_embeddings(self) -> Dict[str, Any]:
+        """Preload image embeddings into memory"""
+        try:
+            print("Preloading image embeddings...")
+            emb, paths = force_load_embeddings()
+            if emb is not None:
+                return {
+                    "status": "success",
+                    "message": f"Loaded {len(paths)} image embeddings",
+                    "count": len(paths)
+                }
+            else:
+                return {
+                    "status": "warning",
+                    "message": "No embeddings found in database",
+                    "count": 0
+                }
+        except Exception as e:
+            print(f"Error preloading embeddings: {e}")
+            return {
+                "status": "error",
+                "message": f"Failed to load embeddings: {e}",
+                "count": 0
+            }
     
     def get_default_image_paths(self) -> List[str]:
         """Get default image paths for the current user"""
@@ -187,7 +217,6 @@ class SearchAPI:
                 self._settings_window.expose(self.index_files)
                 self._settings_window.expose(self.index_documents)
                 self._settings_window.expose(self.index_images)
-                self._settings_window.expose(self.index_images_with_paths)
                 self._settings_window.expose(self.get_default_image_paths)
                 self._settings_window.expose(self.get_username)
                 self._settings_window.expose(self.select_folder)

@@ -48,7 +48,7 @@
 
         .hint-text {
             font-size: 16px;
-            color: rgba(100, 100, 150, 0.6);
+            color: rgba(55, 55, 97, 0.6);
             font-style: italic;
         }
 
@@ -582,14 +582,60 @@
         });
 
         document.querySelectorAll('.dropdown-item').forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', async () => {
                 document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                currentSearchType = item.getAttribute('data-search-type');
+                const newSearchType = item.getAttribute('data-search-type');
+                
+                // If switching to image search, preload embeddings
+                if (newSearchType === 'image' && currentSearchType !== 'image') {
+                    await preloadImageEmbeddings();
+                }
+                
+                currentSearchType = newSearchType;
                 dropdownMenu.classList.remove('show');
                 performSearch(searchInput.value);
             });
         });
+
+        async function preloadImageEmbeddings() {
+            try {
+                // Show loading message
+                hintText.style.display = 'block';
+                hintText.textContent = 'Loading image embeddings...';
+                loadingIndicator.classList.add('show');
+                
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.check_embeddings_loaded) {
+                    const status = await window.pywebview.api.check_embeddings_loaded();
+                    
+                    if (!status.loaded && window.pywebview.api.preload_image_embeddings) {
+                        console.log('Preloading image embeddings...');
+                        const result = await window.pywebview.api.preload_image_embeddings();
+                        console.log('Embeddings loaded:', result);
+                        
+                        if (result.status === 'success') {
+                            hintText.textContent = `Loaded ${result.count} images. Ready to search!`;
+                        } else if (result.status === 'warning') {
+                            hintText.textContent = 'No images indexed yet. Please index images first.';
+                        }
+                    } else {
+                        console.log('Embeddings already loaded');
+                        hintText.textContent = 'Image search ready!';
+                    }
+                }
+                
+                loadingIndicator.classList.remove('show');
+                setTimeout(() => {
+                    if (!searchInput.value.trim()) {
+                        hintText.textContent = 'Start typing to search...';
+                    }
+                }, 2000);
+            } catch (e) {
+                console.error('Error preloading embeddings:', e);
+                loadingIndicator.classList.remove('show');
+                hintText.textContent = 'Error loading embeddings. Try again.';
+            }
+        }
 
         async function performSearch(query) {
             console.log('performSearch called with query:', query);

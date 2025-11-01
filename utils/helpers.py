@@ -3,7 +3,8 @@ import os
 import string
 import time
 from functools import wraps
-from config import SYMBOL_MAP, DIGIT_MAP, VALID_SYMBOLS
+from config import SYMBOL_MAP, DIGIT_MAP, VALID_SYMBOLS, VALID_IMAGE_EXTENSIONS
+import json
 
 if os.name == 'nt':
     import ctypes
@@ -66,3 +67,27 @@ def clean_query(s: str) -> str:
     """Keep only allowed characters."""
     ALLOWED = set(string.ascii_letters + string.digits).union(VALID_SYMBOLS)
     return "".join(ch for ch in (s or "") if ch in ALLOWED).lower()
+
+
+def find_media(directories: list):
+    """
+    Returns a list of valid image directories
+    :param directories:
+    :return Valid image directories:
+    """
+    valid_images = []
+    for directories in directories:
+        for root, _, files in os.walk(directories):
+            if is_hidden(root):
+                continue
+            for file in files:
+                file_path = os.path.join(root, file)
+                ext = os.path.splitext(file)[1].lower()
+
+                if ext in VALID_IMAGE_EXTENSIONS and os.path.getsize(file_path) > 10 * 1024 and 'windows' not in file_path.lower() and 'xampp' not in file_path.lower() and len(file) > 3 and file_path not in valid_images:  # Ignore small files
+                    valid_images.append(file_path)
+        json_data = {path:"" for path in valid_images}
+        with open('file_data.json', 'w') as data:
+            json.dump(json_data, data)
+
+    return valid_images

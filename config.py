@@ -17,6 +17,7 @@ BACKGROUND_COLOR = "#9494EE"
 # Indexing Settings
 ROOT_INDEXING_PATH = "C:/"
 VALID_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+
 MIN_IMAGE_SIZE_KB = 10
 
 # Skip patterns for file indexing
@@ -26,7 +27,7 @@ SKIP_FOLDERS = {
     '$av_asw$', 'found.000'
 }
 SKIP_FILES = {'pagefile.sys', 'hiberfil.sys', 'swapfile.sys'}
-SKIP_PATTERNS = ['temp', 'tmp', 'cache', '__pycache__', 'node_modules', 'pkg']
+SKIP_PATTERNS = ['temp', 'tmp', 'cache', '__pycache__', 'node_modules', 'pkg', ".vscode"]
 
 # Symbols and character mapping
 VALID_SYMBOLS = set(" .!#$%&'()-@^_`{}~")

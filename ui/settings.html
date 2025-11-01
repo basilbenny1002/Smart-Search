@@ -835,8 +835,8 @@
             text.textContent = stages[0];
 
             try {
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images_with_paths) {
-                    const result = await window.pywebview.api.index_images_with_paths(paths);
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_images) {
+                    const result = await window.pywebview.api.index_images(paths);
                     
                     clearInterval(progressInterval);
                     fill.classList.remove('indeterminate');
@@ -865,11 +865,6 @@
             } finally {
                 indexNowBtn.disabled = false;
             }
-        }
-
-        async function indexImages() {
-            // This is kept for backward compatibility but not used anymore
-            // The dropdown handles image indexing now
         }
 
         async function toggleAutoIndex() {
