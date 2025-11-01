@@ -13,7 +13,7 @@ from indexing.text_indexer import index_documents as do_text_indexing
 from search.image_search import search_images, is_embeddings_loaded, force_load_embeddings
 from search.text_search import search_text_content
 from utils.helpers import clean_query, get_value
-from config import UI_DIR, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED
+from config import UI_DIR, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED
 
 
 def _file_to_dict(fd: FileData) -> Dict[str, Any]:
@@ -231,13 +231,22 @@ class SearchAPI:
             if not self._main_window:
                 return "no-window"
             
-            if expand:
-                self._main_window.resize(800, WINDOW_HEIGHT_EXPANDED)
-            else:
-                self._main_window.resize(800, WINDOW_HEIGHT)
+            new_width = WINDOW_WIDTH
+            new_height = WINDOW_HEIGHT_EXPANDED if expand else WINDOW_HEIGHT
+            
+            print(f"Resizing window to: {new_width}x{new_height} (expand={expand})")
+            
+            # Try setting width and height properties directly instead of resize()
+            try:
+                self._main_window.width = new_width
+                self._main_window.height = new_height
+            except:
+                # Fallback to resize if properties don't work
+                self._main_window.resize(new_width, new_height)
             
             return "ok"
         except Exception as e:
+            print(f"Error resizing window: {e}")
             return f"error: {e}"
 
     def toggle_window(self) -> str:

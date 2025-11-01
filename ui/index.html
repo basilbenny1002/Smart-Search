@@ -702,18 +702,50 @@
 
         document.querySelectorAll('.dropdown-item').forEach(item => {
             item.addEventListener('click', async () => {
-                document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
+                const previousSearchType = currentSearchType;
                 const newSearchType = item.getAttribute('data-search-type');
                 
+                console.log(`Switching from ${previousSearchType} to ${newSearchType}`);
+                
+                // Update active state
+                document.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
                 // If switching to image search, preload embeddings
-                if (newSearchType === 'image' && currentSearchType !== 'image') {
+                if (newSearchType === 'image' && previousSearchType !== 'image') {
                     await preloadImageEmbeddings();
                 }
                 
                 currentSearchType = newSearchType;
                 dropdownMenu.classList.remove('show');
-                performSearch(searchInput.value);
+                
+                // Always clear results when switching modes
+                resultsContainer.classList.remove('grid-view');
+                resultsContainer.classList.remove('show');
+                resultsContainer.innerHTML = '';
+                currentResults = [];
+                selectedIndex = -1;
+                
+                // Show appropriate hint based on mode
+                hintText.style.display = 'block';
+                if (newSearchType === 'image') {
+                    hintText.textContent = 'Search images by description...';
+                } else if (newSearchType === 'text') {
+                    hintText.textContent = 'Search file contents...';
+                } else {
+                    hintText.textContent = 'Start typing to search...';
+                }
+                
+                // Re-run search with new mode if there's a query
+                const currentQuery = searchInput.value.trim();
+                if (currentQuery) {
+                    performSearch(currentQuery);
+                } else {
+                    // Collapse window if no query
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                        await window.pywebview.api.resize_window(false);
+                    }
+                }
             });
         });
 
