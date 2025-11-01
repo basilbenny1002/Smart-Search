@@ -28,6 +28,8 @@ def main():
     # Expose API methods to frontend
     window.expose(api.search)
     window.expose(api.open_file)
+    window.expose(api.open_file_location)
+    window.expose(api.resize_window)
     window.expose(api.toggle_window)
     window.expose(api.open_settings)
     window.expose(api.open_info)

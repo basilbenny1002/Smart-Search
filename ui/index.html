@@ -334,9 +334,28 @@
             overflow-y: hidden;
             padding: 8px 12px;
             display: none;
+            height: 100%;
+            min-height: 0;
         }
 
-        .results-container.show { display: block; overflow-y: auto; }
+        .results-container.show { 
+            display: block; 
+            overflow-y: auto; 
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Grid view for image search */
+        .results-container.grid-view {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding: 16px;
+            overflow-y: auto !important;
+            height: 100%;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
 
         .result-item {
             display: flex;
@@ -389,6 +408,106 @@
             border-radius: 6px;
             object-fit: cover;
             background: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Image card styles for grid view */
+        .image-card {
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            height: 300px;
+            min-height: 300px;
+            max-height: 300px;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 1);
+        }
+        
+        .image-card.selected {
+            box-shadow: 0 8px 24px rgba(100, 120, 180, 0.4);
+            transform: translateY(-4px);
+            border: 2px solid rgba(150, 120, 200, 0.8);
+        }
+        
+        .image-card-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: linear-gradient(135deg, rgba(240, 240, 245, 0.8) 0%, rgba(230, 230, 240, 0.8) 100%);
+            cursor: pointer;
+            display: block;
+        }
+        
+        .image-card-info {
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .image-card-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(30, 30, 60, 0.95);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .image-card-path {
+            font-size: 11px;
+            color: rgba(100, 100, 140, 0.75);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .image-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .image-action-btn {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .image-action-btn.open {
+            background: rgba(100, 120, 180, 0.9);
+            color: white;
+        }
+        
+        .image-action-btn.open:hover {
+            background: rgba(100, 120, 180, 1);
+            transform: scale(1.02);
+        }
+        
+        .image-action-btn.locate {
+            background: rgba(150, 120, 200, 0.15);
+            color: rgba(100, 120, 180, 0.9);
+        }
+        
+        .image-action-btn.locate:hover {
+            background: rgba(150, 120, 200, 0.25);
+            transform: scale(1.02);
         }
 
         .result-info {
@@ -648,6 +767,12 @@
                 hintText.textContent = 'Start typing to search...';
                 loadingIndicator.classList.remove('show');
                 bottomButtons.classList.remove('hidden');
+                
+                // Collapse window when no search
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                    await window.pywebview.api.resize_window(false);
+                }
+                
                 return;
             }
 
@@ -692,56 +817,108 @@
             displayResults(filtered);
         }
 
-        function displayResults(results) {
+        async function displayResults(results) {
             if (results.length === 0) {
                 resultsContainer.innerHTML = '<div class="no-results">No results found</div>';
                 resultsContainer.classList.add('show');
+                resultsContainer.classList.remove('grid-view');
                 hintText.style.display = 'none';
+                
+                // Collapse window when no results
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                    await window.pywebview.api.resize_window(false);
+                }
+                
                 return;
             }
 
             hintText.style.display = 'none';
+            
+            // Expand window when showing results
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.resize_window) {
+                await window.pywebview.api.resize_window(true);
+            }
 
-            resultsContainer.innerHTML = results.map((item, index) => {
-                if (currentSearchType === 'image' && item.image_url) {
+            // Use grid layout for image search
+            if (currentSearchType === 'image') {
+                resultsContainer.classList.add('grid-view');
+                
+                resultsContainer.innerHTML = results.map((item, index) => {
                     return `
-                        <div class="result-item" data-index="${index}">
-                            <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="result-image-preview">
-                            <div class="result-info">
-                                <div class="result-name">${escapeHtml(item.name)}</div>
-                                <div class="result-path">${escapeHtml(item.path)}</div>
+                        <div class="image-card" data-index="${index}">
+                            <img src="${escapeHtml(item.image_url)}" 
+                                 alt="${escapeHtml(item.name)}" 
+                                 class="image-card-preview">
+                            <div class="image-card-info">
+                                <div class="image-card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                                <div class="image-card-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path)}</div>
+                                <div class="image-card-actions">
+                                    <button class="image-action-btn open" data-action="open" data-index="${index}">
+                                        📷 Open
+                                    </button>
+                                    <button class="image-action-btn locate" data-action="locate" data-index="${index}">
+                                        📁 Locate
+                                    </button>
+                                </div>
                             </div>
-                            <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
                         </div>
                     `;
-                } else {
-                    return `
-                        <div class="result-item" data-index="${index}">
-                            <span class="result-icon">${getSvgIcon(item.iconType)}</span>
-                            <div class="result-info">
-                                <div class="result-name">${escapeHtml(item.name)}</div>
-                                <div class="result-path">${escapeHtml(item.path)}</div>
-                            </div>
-                            <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
+                }).join('');
+                
+                // Add event listeners for image cards
+                document.querySelectorAll('.image-card').forEach((el) => {
+                    const idx = parseInt(el.getAttribute('data-index'), 10);
+                    el.addEventListener('mouseover', () => {
+                        selectedIndex = idx;
+                        updateSelection();
+                    });
+                });
+                
+                // Add event listeners for action buttons
+                document.querySelectorAll('.image-action-btn').forEach((btn) => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt(btn.getAttribute('data-index'), 10);
+                        const action = btn.getAttribute('data-action');
+                        if (idx >= 0 && currentResults[idx]) {
+                            if (action === 'open') {
+                                openResult(currentResults[idx]);
+                            } else if (action === 'locate') {
+                                openFileLocation(currentResults[idx]);
+                            }
+                        }
+                    });
+                });
+            } else {
+                resultsContainer.classList.remove('grid-view');
+                
+                resultsContainer.innerHTML = results.map((item, index) => `
+                    <div class="result-item" data-index="${index}">
+                        <span class="result-icon">${getSvgIcon(item.iconType)}</span>
+                        <div class="result-info">
+                            <div class="result-name">${escapeHtml(item.name)}</div>
+                            <div class="result-path">${escapeHtml(item.path)}</div>
                         </div>
-                    `;
-                }
-            }).join('');
-
-            document.querySelectorAll('.result-item').forEach((el) => {
-                const idx = parseInt(el.getAttribute('data-index'), 10);
-                el.addEventListener('mouseover', () => {
-                    selectedIndex = idx;
-                    updateSelection();
+                        <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
+                    </div>
+                `).join('');
+                
+                // Add event listeners for normal file results
+                document.querySelectorAll('.result-item').forEach((el) => {
+                    const idx = parseInt(el.getAttribute('data-index'), 10);
+                    el.addEventListener('mouseover', () => {
+                        selectedIndex = idx;
+                        updateSelection();
+                    });
+                    el.addEventListener('click', () => {
+                        selectedIndex = idx;
+                        updateSelection();
+                    });
+                    el.addEventListener('dblclick', () => {
+                        if (idx >= 0) openResult(currentResults[idx]);
+                    });
                 });
-                el.addEventListener('click', () => {
-                    selectedIndex = idx;
-                    updateSelection();
-                });
-                el.addEventListener('dblclick', () => {
-                    if (idx >= 0) openResult(currentResults[idx]);
-                });
-            });
+            }
 
             resultsContainer.classList.add('show');
         }
@@ -753,7 +930,7 @@
         }
 
         function updateSelection() {
-            document.querySelectorAll('.result-item').forEach((item, index) => {
+            document.querySelectorAll('.result-item, .image-card').forEach((item, index) => {
                 item.classList.toggle('selected', index === selectedIndex);
             });
 
@@ -776,6 +953,20 @@
                 });
             } else {
                 alert(`Would open: ${item.path}\nType: ${item.type}`);
+            }
+        }
+        
+        function openFileLocation(item) {
+            console.log('Opening location:', item);
+
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.open_file_location) {
+                window.pywebview.api.open_file_location(item.path).then(result => {
+                    console.log('Location opened:', result);
+                }).catch(err => {
+                    console.error('Error opening location:', err);
+                });
+            } else {
+                alert(`Would open location: ${item.path}`);
             }
         }
 

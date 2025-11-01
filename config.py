@@ -12,6 +12,7 @@ FILE_DATA_JSON = os.path.join(DATA_DIR, "file_data.json")
 UI_DIR = os.path.join(BASE_DIR, "ui")
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 450
+WINDOW_HEIGHT_EXPANDED = 650
 BACKGROUND_COLOR = "#9494EE"
 
 # Indexing Settings

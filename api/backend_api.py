@@ -1,5 +1,7 @@
 """Backend API for the search application"""
 import os
+import subprocess
+import base64
 from typing import List, Dict, Any
 import webview
 
@@ -11,7 +13,7 @@ from indexing.text_indexer import index_documents as do_text_indexing
 from search.image_search import search_images, is_embeddings_loaded, force_load_embeddings
 from search.text_search import search_text_content
 from utils.helpers import clean_query, get_value
-from config import UI_DIR
+from config import UI_DIR, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED
 
 
 def _file_to_dict(fd: FileData) -> Dict[str, Any]:
@@ -72,12 +74,36 @@ class SearchAPI:
         """Image search by description"""
         try:
             results = search_images(query)
-            return [{
-                "name": os.path.basename(p), 
-                "path": p, 
-                "type": "image",
-                "image_url": f"file:///{p.replace(os.sep, '/')}" 
-            } for p in results[:50]]
+            processed_results = []
+            
+            for p in results[:50]:
+                try:
+                    # Convert image to base64 for pywebview
+                    with open(p, "rb") as f:
+                        encoded = base64.b64encode(f.read()).decode('utf-8')
+                    
+                    # Determine image type from extension
+                    ext = os.path.splitext(p)[1].lower()
+                    mime_type = {
+                        '.png': 'image/png',
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.gif': 'image/gif',
+                        '.webp': 'image/webp',
+                        '.bmp': 'image/bmp'
+                    }.get(ext, 'image/png')
+                    
+                    processed_results.append({
+                        "name": os.path.basename(p), 
+                        "path": p, 
+                        "type": "image",
+                        "image_url": f"data:{mime_type};base64,{encoded}"
+                    })
+                except Exception as e:
+                    print(f"Error loading image {p}: {e}")
+                    continue
+            
+            return processed_results
         except Exception as e:
             print(f"Image search error: {e}")
             return []
@@ -185,6 +211,32 @@ class SearchAPI:
                 os.startfile(path)
                 return "ok"
             return "not-found"
+        except Exception as e:
+            return f"error: {e}"
+    
+    def open_file_location(self, path: str) -> str:
+        """Open file location in explorer and highlight the file"""
+        try:
+            if os.path.exists(path):
+                # Use subprocess to open explorer with the file selected
+                subprocess.run(["explorer", "/select,", os.path.normpath(path)])
+                return "ok"
+            return "not-found"
+        except Exception as e:
+            return f"error: {e}"
+    
+    def resize_window(self, expand: bool) -> str:
+        """Resize main window - expand for results, collapse when empty"""
+        try:
+            if not self._main_window:
+                return "no-window"
+            
+            if expand:
+                self._main_window.resize(800, WINDOW_HEIGHT_EXPANDED)
+            else:
+                self._main_window.resize(800, WINDOW_HEIGHT)
+            
+            return "ok"
         except Exception as e:
             return f"error: {e}"
 

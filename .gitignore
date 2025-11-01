@@ -3,3 +3,5 @@ trees/
 GUI/
 test.py
 data/
+file_data.json
+embeddings.db
