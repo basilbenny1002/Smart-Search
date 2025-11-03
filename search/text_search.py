@@ -68,35 +68,6 @@ def search_text_content(query: str, limit: int = 50):
         print(f"Error searching documents: {e}")
         return []
     
-#     return []
-# def search_documents(query, top_k=50):
-#     query_emb = embed_text(query)
-#     conn = sqlite3.connect(DB_PATH)
-#     cur = conn.cursor()
-
-#     cur.execute("SELECT file_path, embedding FROM embeddings")
-#     rows = cur.fetchall()
-#     conn.close()
-
-#     scores = []
-#     for file_path, emb_blob in rows:
-#         emb = np.frombuffer(emb_blob, dtype=np.float32)
-#         score = cosine_similarity(query_emb, emb)
-#         scores.append((file_path, score))
-
-#     # Sort by similarity, filter unique files
-#     seen = set()
-#     unique_sorted = []
-#     for file_path, score in sorted(scores, key=lambda x: x[1], reverse=True):
-#         if file_path not in seen:
-#             seen.add(file_path)
-#             unique_sorted.append((file_path, score))
-#         if len(unique_sorted) >= top_k:
-#             break
-
-#     return unique_sorted
-
-
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 

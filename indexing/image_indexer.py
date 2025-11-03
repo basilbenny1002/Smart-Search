@@ -13,7 +13,7 @@ import json
 import ctypes
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
-# image_embeddings, image_paths = None, None
+
 
 
 def save_embeddings(image_paths, image_embeddings):

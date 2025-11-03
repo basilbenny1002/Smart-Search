@@ -5,6 +5,7 @@ import string
 from typing import List
 from models.data_models import Tree, FileData
 from config import TREES_DIR, SYMBOL_MAP, DIGIT_MAP
+import sqlite3
 from utils.helpers import get_value, timeit
 
 
@@ -155,3 +156,203 @@ def search_tree(prefix: str) -> List[FileData]:
             return []
     
     return current_node.files if current_node else []
+
+# ========== SQLite-based Search Index (Alternative to Tree) ==========
+# This is a new approach that stores file data in SQLite instead of tree structures
+# Not yet connected to main code - for review/testing first
+
+def init_db():
+    """Initialize the SQLite database for file search index."""
+    db_path = os.path.join(TREES_DIR, "file_search.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Create table with prefix as primary key and JSON-serialized FileData list
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS file_index (
+            prefix TEXT PRIMARY KEY,
+            files_json TEXT NOT NULL
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+    print(f"Initialized database at {db_path}")
+
+
+def build_search_index(file_list: List[FileData], progress_callback=None) -> None:
+    """
+    Build SQLite search index from file list.
+    
+    For each file, creates entries for all prefixes:
+    - File 'abc.txt' creates entries: 'a', 'ab', 'abc'
+    - Each entry stores list of FileData objects as JSON
+    
+    This is an alternative to the tree-based approach.
+    """
+    init_db()
+    
+    db_path = os.path.join(TREES_DIR, "file_search.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Dictionary to accumulate files for each prefix
+    # prefix -> list of FileData objects
+    prefix_map = {}
+    
+    total = len(file_list)
+    for idx, file_data in enumerate(file_list):
+        if not file_data.file_name:
+            continue
+        
+        # Normalize the filename to lowercase for prefix matching
+        normalized_name = file_data.file_name.lower()
+        
+        # Create all prefixes for this file
+        # e.g., "abc" -> ["a", "ab", "abc"]
+        for i in range(1, len(normalized_name) + 1):
+            # Build prefix character by character
+            prefix_chars = []
+            for j in range(i):
+                char = normalized_name[j]
+                # Use get_value to handle special characters
+                prefix_chars.append(get_value(char))
+            
+            prefix = ''.join(prefix_chars)
+            
+            # Add file to this prefix's list
+            if prefix not in prefix_map:
+                prefix_map[prefix] = []
+            prefix_map[prefix].append(file_data)
+        
+        if progress_callback and idx % 100 == 0:
+            progress_callback(idx, total)
+    
+    # Insert all prefixes into database
+    print(f"Inserting {len(prefix_map)} prefixes into database...")
+    for prefix, files in prefix_map.items():
+        # Serialize FileData list to JSON
+        files_json = json.dumps([f.to_dict() for f in files])
+        
+        cursor.execute("""
+            INSERT OR REPLACE INTO file_index (prefix, files_json)
+            VALUES (?, ?)
+        """, (prefix, files_json))
+    
+    conn.commit()
+    conn.close()
+    print(f"Search index built with {len(prefix_map)} prefixes")
+
+
+def search_db(query: str) -> List[FileData]:
+    """
+    Search the SQLite database for files matching the query prefix.
+    
+    Args:
+        query: Search prefix (e.g., 'ab', 'test', etc.)
+    
+    Returns:
+        List of FileData objects matching the prefix
+    
+    This is an alternative to search_tree() - not yet connected to main code.
+    """
+    if not query:
+        return []
+    
+    # Normalize query and convert special characters
+    normalized_query = query.lower()
+    prefix_chars = []
+    for char in normalized_query:
+        prefix_chars.append(get_value(char))
+    prefix = ''.join(prefix_chars)
+    
+    db_path = os.path.join(TREES_DIR, "file_search.db")
+    
+    # Check if database exists
+    if not os.path.exists(db_path):
+        print(f"Database not found: {db_path}")
+        return []
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Query for exact prefix match
+    cursor.execute("""
+        SELECT files_json FROM file_index
+        WHERE prefix = ?
+    """, (prefix,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result is None:
+        return []
+    
+    # Deserialize JSON back to FileData objects
+    files_json = result[0]
+    files_dicts = json.loads(files_json)
+    files = [FileData.from_dict(f) for f in files_dicts]
+    
+    return files
+
+
+def search_db_startswith(query: str) -> List[FileData]:
+    """
+    Search the SQLite database for ALL files that start with the query.
+    Uses LIKE query to find all matching prefixes.
+    
+    Args:
+        query: Search prefix (e.g., 'ab', 'test', etc.)
+    
+    Returns:
+        List of FileData objects where filename starts with query
+    
+    Alternative approach that searches multiple prefix entries.
+    """
+    if not query:
+        return []
+    
+    # Normalize query
+    normalized_query = query.lower()
+    prefix_chars = []
+    for char in normalized_query:
+        prefix_chars.append(get_value(char))
+    prefix = ''.join(prefix_chars)
+    
+    db_path = os.path.join(TREES_DIR, "file_search.db")
+    
+    if not os.path.exists(db_path):
+        print(f"Database not found: {db_path}")
+        return []
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Query for all prefixes starting with the query
+    # This will return multiple rows
+    cursor.execute("""
+        SELECT files_json FROM file_index
+        WHERE prefix LIKE ?
+    """, (prefix + '%',))
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        return []
+    
+    # Collect all unique files from all matching prefixes
+    # Use a dict to avoid duplicates (keyed by file_path)
+    unique_files = {}
+    for row in results:
+        files_json = row[0]
+        files_dicts = json.loads(files_json)
+        for f_dict in files_dicts:
+            file_obj = FileData.from_dict(f_dict)
+            # Use file_path as unique key
+            unique_files[file_obj.file_path] = file_obj
+    
+    return list(unique_files.values())
+
+
+    
