@@ -1,5 +1,12 @@
-# Core dependencies
 pywebview>=4.0
 keyboard>=0.13.5
+torch>=2.0.0
+git+https://github.com/openai/CLIP.git
+Pillow>=10.0.0
+sentence-transformers>=2.2.0
+PyPDF2>=3.0.0
+python-docx>=0.8.11
+numpy>=1.24.0
+pyuac>=0.0.3
 
 
