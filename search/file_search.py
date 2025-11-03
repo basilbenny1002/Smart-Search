@@ -161,7 +161,7 @@ def search_tree(prefix: str) -> List[FileData]:
 # This is a new approach that stores file data in SQLite instead of tree structures
 # Not yet connected to main code - for review/testing first
 
-def init_db():
+def initiate_db():
     """Initialize the SQLite database for file search index."""
     db_path = os.path.join(TREES_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
@@ -190,7 +190,7 @@ def build_search_index(file_list: List[FileData], progress_callback=None) -> Non
     
     This version writes directly to DB to save RAM.
     """
-    init_db()
+    initiate_db()
     
     db_path = os.path.join(TREES_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)

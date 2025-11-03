@@ -55,7 +55,11 @@ def index_files(root_dir: str = ROOT_INDEXING_PATH, progress_callback=None) -> d
         stage: 'scanning', 'building', 'saving', 'complete'
         message: descriptive text for the current stage
     """
-    from search.file_search import build_trees, save_trees, clear_trees
+    # Old tree-based indexing (commented out)
+    # from search.file_search import build_trees, save_trees, clear_trees
+    
+    # New SQLite-based indexing
+    from search.file_search import build_search_index
     
     try:
         if progress_callback:
@@ -66,25 +70,24 @@ def index_files(root_dir: str = ROOT_INDEXING_PATH, progress_callback=None) -> d
         total = len(entries)
         
         if progress_callback:
-            progress_callback('building', f'Generating trees for {total:,} entries...')
+            progress_callback('building', f'Building search index for {total:,} entries...')
         
-        print(f"Building search trees for {total:,} entries...")
-        build_trees(entries, progress_callback)
+        print(f"Building search index for {total:,} entries...")
         
-        # Clear the file list to free memory
+        # Old tree-based method (commented out)
+        # build_trees(entries, progress_callback)
+        # entries.clear()
+        # del entries
+        # save_trees()
+        # clear_trees()
+        
+        # New SQLite-based method
+        build_search_index(entries, progress_callback)
+        
+        # Entries are already cleared by build_search_index (sets to None during iteration)
         print("Clearing file list from memory...")
         entries.clear()
         del entries
-        
-        if progress_callback:
-            progress_callback('saving', 'Saving trees to disk...')
-        
-        print("Saving trees to disk...")
-        save_trees()
-        
-        # Clear trees from memory after saving
-        print("Clearing trees from memory...")
-        clear_trees()
         
         if progress_callback:
             progress_callback('complete', f'Indexing complete! Indexed {total:,} files and folders')

@@ -6,7 +6,10 @@ from typing import List, Dict, Any
 import webview
 
 from models.data_models import FileData
-from search.file_search import search_tree, load_trees, trees
+# Old tree-based search (commented out)
+# from search.file_search import search_tree, load_trees, trees
+# New SQLite-based search
+from search.file_search import search_db, load_trees, trees
 from indexing.file_indexer import index_files as do_file_indexing
 from indexing.image_indexer import index_images as do_image_indexing
 from indexing.text_indexer import index_documents as do_text_indexing
@@ -61,9 +64,18 @@ class SearchAPI:
         if not q:
             return []
         
-        # Lazy loading is now handled inside search_tree()
+        # Old tree-based search (commented out)
+        # try:
+        #     matches = search_tree(q)
+        #     print(f"Found {len(matches)} matches")
+        #     return [_file_to_dict(m) for m in (matches or [])]
+        # except Exception as e:
+        #     print(f"File search error: {e}")
+        #     return []
+        
+        # New SQLite-based search
         try:
-            matches = search_tree(q)
+            matches = search_db(q)
             print(f"Found {len(matches)} matches")
             return [_file_to_dict(m) for m in (matches or [])]
         except Exception as e:

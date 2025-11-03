@@ -36,13 +36,16 @@ SKIP_FILES = {'pagefile.sys', 'hiberfil.sys', 'swapfile.sys'}
 SKIP_PATTERNS = ['temp', 'tmp', 'cache', '__pycache__', 'node_modules', 'pkg', ".vscode"]
 
 # Symbols and character mapping
-VALID_SYMBOLS = set(" .!#$%&'()-@^_`{}~")
+# Windows allows these symbols in filenames: space ! # $ % & ' ( ) + , - . ; = @ [ ] ^ _ ` { } ~
+# Forbidden: \ / : * ? " < > |
+VALID_SYMBOLS = set(" .!#$%&'()+,-.;=@[]^_`{}~")
 SYMBOL_MAP = {
     " ": "space", "!": "exclamation", "#": "hash", "$": "dollar",
     "%": "percent", "&": "ampersand", "'": "apostrophe", ".": "dot",
-    "(": "lparen", ")": "rparen", "-": "dash", "@": "at",
-    "^": "caret", "_": "underscore", "`": "backtick",
-    "{": "lbrace", "}": "rbrace", "~": "tilde",
+    "(": "lparen", ")": "rparen", "+": "plus", ",": "comma",
+    "-": "dash", ";": "semicolon", "=": "equals", "@": "at",
+    "[": "lbracket", "]": "rbracket", "^": "caret", "_": "underscore",
+    "`": "backtick", "{": "lbrace", "}": "rbrace", "~": "tilde",
 }
 DIGIT_MAP = {str(i): f"num{i}" for i in range(10)}
 

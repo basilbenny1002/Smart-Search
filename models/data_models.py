@@ -6,12 +6,15 @@ class Tree:
     """Tree structure for fast prefix-based file search"""
     
     # Mapping of Windows-valid symbols to safe attribute names
+    # Windows allows: space ! # $ % & ' ( ) + , - . ; = @ [ ] ^ _ ` { } ~
+    # Forbidden: \ / : * ? " < > |
     SYMBOL_MAP = {
         " ": "space", "!": "exclamation", "#": "hash", "$": "dollar",
         "%": "percent", "&": "ampersand", "'": "apostrophe", ".": "dot",
-        "(": "lparen", ")": "rparen", "-": "dash", "@": "at",
-        "^": "caret", "_": "underscore", "`": "backtick",
-        "{": "lbrace", "}": "rbrace", "~": "tilde",
+        "(": "lparen", ")": "rparen", "+": "plus", ",": "comma",
+        "-": "dash", ";": "semicolon", "=": "equals", "@": "at",
+        "[": "lbracket", "]": "rbracket", "^": "caret", "_": "underscore",
+        "`": "backtick", "{": "lbrace", "}": "rbrace", "~": "tilde",
     }
 
     # Digits → safe names
