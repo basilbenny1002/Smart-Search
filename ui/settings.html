@@ -841,7 +841,8 @@
             // Index button event listeners - must be inside DOMContentLoaded
             document.getElementById('indexFilesBtn').addEventListener('click', indexFiles);
             document.getElementById('indexDocumentsBtn').addEventListener('click', indexDocuments);
-            document.getElementById('indexImagesBtn').addEventListener('click', indexImages);
+            // Removed invalid handler for indexImagesBtn -> indexImages (function doesn't exist)
+            // Image indexing is triggered via the "Index Now" button after selecting paths.
             
             // Back button event listener
             document.getElementById('backBtn').addEventListener('click', async () => {
