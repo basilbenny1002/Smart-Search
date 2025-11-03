@@ -188,17 +188,13 @@ def build_search_index(file_list: List[FileData], progress_callback=None) -> Non
     - File 'abc.txt' creates entries: 'a', 'ab', 'abc'
     - Each entry stores list of FileData objects as JSON
     
-    This is an alternative to the tree-based approach.
+    This version writes directly to DB to save RAM.
     """
     init_db()
     
     db_path = os.path.join(TREES_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
-    # Dictionary to accumulate files for each prefix
-    # prefix -> list of FileData objects
-    prefix_map = {}
     
     total = len(file_list)
     for idx, file_data in enumerate(file_list):
@@ -220,28 +216,44 @@ def build_search_index(file_list: List[FileData], progress_callback=None) -> Non
             
             prefix = ''.join(prefix_chars)
             
-            # Add file to this prefix's list
-            if prefix not in prefix_map:
-                prefix_map[prefix] = []
-            prefix_map[prefix].append(file_data)
+            # Check if prefix already exists
+            cursor.execute("""
+                SELECT files_json FROM file_index WHERE prefix = ?
+            """, (prefix,))
+            
+            result = cursor.fetchone()
+            
+            if result:
+                # Prefix exists - load existing files, append new one, update
+                existing_json = result[0]
+                existing_files = json.loads(existing_json)
+                existing_files.append(file_data.to_dict())
+                
+                # Update the row
+                cursor.execute("""
+                    UPDATE file_index SET files_json = ? WHERE prefix = ?
+                """, (json.dumps(existing_files), prefix))
+            else:
+                # Prefix doesn't exist - create new entry
+                files_json = json.dumps([file_data.to_dict()])
+                cursor.execute("""
+                    INSERT INTO file_index (prefix, files_json) VALUES (?, ?)
+                """, (prefix, files_json))
         
-        if progress_callback and idx % 100 == 0:
-            progress_callback(idx, total)
-    
-    # Insert all prefixes into database
-    print(f"Inserting {len(prefix_map)} prefixes into database...")
-    for prefix, files in prefix_map.items():
-        # Serialize FileData list to JSON
-        files_json = json.dumps([f.to_dict() for f in files])
+        # Free up memory: clear this file's data after it's been written to DB
+        # This helps reduce RAM usage during indexing
+        file_list[idx] = None
         
-        cursor.execute("""
-            INSERT OR REPLACE INTO file_index (prefix, files_json)
-            VALUES (?, ?)
-        """, (prefix, files_json))
+        # Commit every 100 files for performance
+        if idx % 100 == 0:
+            conn.commit()
+            if progress_callback:
+                progress_callback(idx, total)
     
+    # Final commit
     conn.commit()
     conn.close()
-    print(f"Search index built with {len(prefix_map)} prefixes")
+    print(f"Search index built with {total} files")
 
 
 def search_db(query: str) -> List[FileData]:
