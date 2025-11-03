@@ -6,6 +6,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 TREES_DIR = os.path.join(DATA_DIR, "trees")
 EMBEDDINGS_DB = os.path.join(DATA_DIR, "embeddings.db")
+TEXT_EMBEDDINGS_DB = os.path.join(DATA_DIR, "text_embeddings.db")
 FILE_DATA_JSON = os.path.join(DATA_DIR, "file_data.json")
 
 # UI Settings
@@ -18,8 +19,12 @@ BACKGROUND_COLOR = "#9494EE"
 # Indexing Settings
 ROOT_INDEXING_PATH = "C:/"
 VALID_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp"}
+VALID_DOCUMENT_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 
 MIN_IMAGE_SIZE_KB = 10
+
+# Text search model
+TEXT_SEARCH_MODEL = "intfloat/e5-base-v2"
 
 # Skip patterns for file indexing
 SKIP_FOLDERS = {

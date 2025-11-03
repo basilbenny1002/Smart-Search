@@ -121,9 +121,14 @@ class SearchAPI:
         """Index all files and folders"""
         return do_file_indexing()
 
-    def index_documents(self) -> Dict[str, Any]:
+    def index_documents(self, paths: List[str] = None) -> Dict[str, Any]:
         """Index document contents"""
-        return do_text_indexing()
+        if not paths:
+            # If no paths provided, use default paths
+            paths = self.get_default_document_paths()
+        
+        print(f"Indexing documents from {len(paths)} path(s): {paths}")
+        return do_text_indexing(paths)
 
     def index_images(self, paths: List[str] = None) -> Dict[str, Any]:
         """Index images from specified paths"""
@@ -179,6 +184,21 @@ class SearchAPI:
             os.path.join(base_path, 'OneDrive', 'Pictures', 'Screenshots'),
             os.path.join(base_path, 'OneDrive', 'Documents'),
             os.path.join(base_path, 'Desktop')
+        ]
+        
+        # Only return paths that exist
+        return [p for p in paths if os.path.exists(p)]
+    
+    def get_default_document_paths(self) -> List[str]:
+        """Get default document paths for the current user"""
+        base_path = os.path.expanduser('~')
+        
+        paths = [
+            os.path.join(base_path, 'Documents'),
+            os.path.join(base_path, 'Downloads'),
+            os.path.join(base_path, 'Downloads', 'Documents'),
+            os.path.join(base_path, 'Desktop'),
+            os.path.join(base_path, 'OneDrive', 'Documents'),
         ]
         
         # Only return paths that exist
@@ -279,6 +299,7 @@ class SearchAPI:
                 self._settings_window.expose(self.index_documents)
                 self._settings_window.expose(self.index_images)
                 self._settings_window.expose(self.get_default_image_paths)
+                self._settings_window.expose(self.get_default_document_paths)
                 self._settings_window.expose(self.get_username)
                 self._settings_window.expose(self.select_folder)
                 self._settings_window.expose(self.set_auto_index)
