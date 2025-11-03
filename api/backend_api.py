@@ -287,26 +287,33 @@ class SearchAPI:
     def open_settings(self) -> str:
         """Open settings window"""
         try:
-            if self._settings_window is None:
-                self._settings_window = webview.create_window(
-                    "Settings", os.path.join(UI_DIR, "settings.html"),
-                    width=700, height=700,
-                    frameless=True, on_top=True,
-                    background_color="#9494EE"
-                )
-                # Expose methods
-                self._settings_window.expose(self.index_files)
-                self._settings_window.expose(self.index_documents)
-                self._settings_window.expose(self.index_images)
-                self._settings_window.expose(self.get_default_image_paths)
-                self._settings_window.expose(self.get_default_document_paths)
-                self._settings_window.expose(self.get_username)
-                self._settings_window.expose(self.select_folder)
-                self._settings_window.expose(self.set_auto_index)
-                self._settings_window.expose(self.get_auto_index_state)
-                self._settings_window.expose(self.back_to_search)
-            else:
-                self._settings_window.show()
+            # Always destroy and recreate to ensure fresh state
+            if self._settings_window is not None:
+                try:
+                    self._settings_window.destroy()
+                except:
+                    pass
+                self._settings_window = None
+            
+            self._settings_window = webview.create_window(
+                "Settings", os.path.join(UI_DIR, "settings.html"),
+                width=700, height=700,
+                frameless=True, on_top=True,
+                background_color="#9494EE"
+            )
+            # Expose methods
+            self._settings_window.expose(self.index_files)
+            self._settings_window.expose(self.index_documents)
+            self._settings_window.expose(self.index_images)
+            self._settings_window.expose(self.get_default_image_paths)
+            self._settings_window.expose(self.get_default_document_paths)
+            self._settings_window.expose(self.get_username)
+            self._settings_window.expose(self.select_folder)
+            self._settings_window.expose(self.set_auto_index)
+            self._settings_window.expose(self.get_auto_index_state)
+            self._settings_window.expose(self.back_to_search_from_settings)
+            self._settings_window.expose(self.open_info)  # Allow opening info from settings
+            
             return "ok"
         except Exception as e:
             return f"error: {e}"
@@ -314,32 +321,82 @@ class SearchAPI:
     def open_info(self) -> str:
         """Open info window"""
         try:
-            if self._info_window is None:
-                self._info_window = webview.create_window(
-                    "Information", os.path.join(UI_DIR, "info.html"),
-                    width=700, height=600,
-                    frameless=True, on_top=True,
-                    background_color="#9494EE"
-                )
-                self._info_window.expose(self.back_to_search)
-            else:
-                self._info_window.show()
+            # Always destroy and recreate to ensure fresh state
+            if self._info_window is not None:
+                try:
+                    self._info_window.destroy()
+                except:
+                    pass
+                self._info_window = None
+            
+            self._info_window = webview.create_window(
+                "Information", os.path.join(UI_DIR, "info.html"),
+                width=700, height=600,
+                frameless=True, on_top=True,
+                background_color="#9494EE"
+            )
+            self._info_window.expose(self.back_to_search_from_info)
+            
             return "ok"
         except Exception as e:
+            return f"error: {e}"
+    
+    def back_to_search_from_settings(self) -> str:
+        """Return to main search window from settings"""
+        try:
+            print("back_to_search_from_settings called")
+            if self._settings_window:
+                print("Destroying settings window")
+                self._settings_window.destroy()
+                self._settings_window = None
+            if self._main_window:
+                print("Showing main window")
+                self._main_window.show()
+                self._visible = True
+            print("back_to_search_from_settings completed")
+            return "ok"
+        except Exception as e:
+            print(f"Error in back_to_search_from_settings: {e}")
+            return f"error: {e}"
+    
+    def back_to_search_from_info(self) -> str:
+        """Return to main search window from info"""
+        try:
+            print("back_to_search_from_info called")
+            if self._info_window:
+                print("Destroying info window")
+                self._info_window.destroy()
+                self._info_window = None
+            if self._main_window:
+                print("Showing main window")
+                self._main_window.show()
+                self._visible = True
+            print("back_to_search_from_info completed")
+            return "ok"
+        except Exception as e:
+            print(f"Error in back_to_search_from_info: {e}")
             return f"error: {e}"
 
     def back_to_search(self) -> str:
         """Return to main search window"""
         try:
+            print("back_to_search called")  # Debug log
             if self._settings_window:
-                self._settings_window.hide()
+                print("Destroying settings window")
+                self._settings_window.destroy()
+                self._settings_window = None  # Reset so it gets recreated next time
             if self._info_window:
-                self._info_window.hide()
+                print("Destroying info window")
+                self._info_window.destroy()
+                self._info_window = None
             if self._main_window:
+                print("Showing main window")
                 self._main_window.show()
                 self._visible = True
+            print("back_to_search completed successfully")
             return "ok"
         except Exception as e:
+            print(f"Error in back_to_search: {e}")
             return f"error: {e}"
 
     # Auto-index settings

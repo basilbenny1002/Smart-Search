@@ -20,17 +20,41 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, rgba(173, 216, 230, 0.95) 0%, rgba(216, 191, 216, 0.95) 100%);
-            -webkit-app-region: drag;
             overflow-y: auto;
             margin: 0;
             padding: 20px;
             min-height: 100vh;
+            /* Performance optimizations */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* Only make header draggable for better performance */
+        .drag-handle {
+            -webkit-app-region: drag;
+            cursor: move;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            z-index: 1000;
+            pointer-events: none;
         }
 
         .container {
             max-width: 600px;
             margin: 0 auto;
             -webkit-app-region: no-drag;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* All interactive elements should be no-drag */
+        button, input, label, .path-list, .toggle-switch {
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
         }
 
         .header {
@@ -440,6 +464,9 @@
     </style>
 </head>
 <body>
+    <!-- Drag handle for window dragging - small area for better performance -->
+    <div class="drag-handle"></div>
+    
     <div class="container">
         <div class="header">
             <h1>Settings</h1>
@@ -496,6 +523,18 @@
                     </div>
                 </div>
             </button>
+            
+            <div class="path-selector-dropdown" id="documentPathSelector">
+                <div style="font-size: 13px; font-weight: 600; color: rgba(50, 50, 80, 0.9); margin-bottom: 10px;">
+                    Select Paths to Index:
+                </div>
+                <div class="path-list" id="documentPathList"></div>
+                <div class="dropdown-actions">
+                    <button class="add-path-btn" id="addDocumentPathBtn">Add Path</button>
+                    <button class="index-now-btn" id="indexDocumentsNowBtn">Index Now</button>
+                </div>
+            </div>
+            
             <div class="progress-container" id="documentsProgress">
                 <div class="progress-bar">
                     <div class="progress-fill" id="documentsProgressFill"></div>
@@ -568,6 +607,7 @@
     <script>
         let isAutoIndexEnabled = false;
         let imagePaths = [];
+        let documentPaths = [];
         
         // Initialize default image paths
         async function initializeImagePaths() {
@@ -632,11 +672,80 @@
             });
         }
         
+        // Initialize default document paths
+        async function initializeDocumentPaths() {
+            try {
+                // Try to get default paths from backend
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_default_document_paths) {
+                    try {
+                        const defaultPaths = await window.pywebview.api.get_default_document_paths();
+                        documentPaths = defaultPaths.map(path => ({ path, checked: true }));
+                        console.log('Got default document paths from backend:', documentPaths);
+                    } catch (e) {
+                        console.log('Could not get default document paths, using fallback');
+                        // Fallback to hardcoded paths
+                        const username = await window.pywebview.api.get_username().catch(() => 'User');
+                        documentPaths = [
+                            { path: `C:\\Users\\${username}\\Documents`, checked: true },
+                            { path: `C:\\Users\\${username}\\Downloads`, checked: true },
+                            { path: `C:\\Users\\${username}\\Desktop`, checked: true },
+                            { path: `C:\\Users\\${username}\\OneDrive\\Documents`, checked: true }
+                        ];
+                    }
+                } else {
+                    // Backend not ready, use hardcoded defaults
+                    documentPaths = [
+                        { path: 'C:\\Users\\User\\Documents', checked: true },
+                        { path: 'C:\\Users\\User\\Downloads', checked: true },
+                        { path: 'C:\\Users\\User\\Desktop', checked: true }
+                    ];
+                }
+                
+                console.log('Initialized document paths:', documentPaths);
+                renderDocumentPathList();
+            } catch (error) {
+                console.error('Error initializing document paths:', error);
+            }
+        }
+        
+        function renderDocumentPathList() {
+            const pathList = document.getElementById('documentPathList');
+            if (!pathList) {
+                console.error('Document path list element not found!');
+                return;
+            }
+            
+            pathList.innerHTML = '';
+            console.log('Rendering document paths:', documentPaths);
+            
+            documentPaths.forEach((item, index) => {
+                const pathItem = document.createElement('div');
+                pathItem.className = 'path-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = item.checked;
+                checkbox.id = `doc-path-${index}`;
+                checkbox.addEventListener('change', (e) => {
+                    documentPaths[index].checked = e.target.checked;
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = `doc-path-${index}`;
+                label.textContent = item.path;
+                
+                pathItem.appendChild(checkbox);
+                pathItem.appendChild(label);
+                pathList.appendChild(pathItem);
+            });
+        }
+        
         // Toggle dropdown when Index Images button is clicked
         document.addEventListener('DOMContentLoaded', () => {
             // Wait a bit for pywebview to be ready
             setTimeout(() => {
                 initializeImagePaths();
+                initializeDocumentPaths();
             }, 100);
             
             const indexImagesBtn = document.getElementById('indexImagesBtn');
@@ -651,7 +760,20 @@
                 console.error('Button or selector not found!');
             }
             
-            // Add path button
+            // Document indexing dropdown toggle
+            const indexDocumentsBtn = document.getElementById('indexDocumentsBtn');
+            const documentPathSelector = document.getElementById('documentPathSelector');
+            
+            if (indexDocumentsBtn && documentPathSelector) {
+                indexDocumentsBtn.addEventListener('click', () => {
+                    console.log('Index Documents button clicked');
+                    documentPathSelector.classList.toggle('show');
+                });
+            } else {
+                console.error('Document button or selector not found!');
+            }
+            
+            // Add path button for images
             document.getElementById('addPathBtn').addEventListener('click', async () => {
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.select_folder) {
                     try {
@@ -666,7 +788,22 @@
                 }
             });
             
-            // Index now button
+            // Add path button for documents
+            document.getElementById('addDocumentPathBtn').addEventListener('click', async () => {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.select_folder) {
+                    try {
+                        const selectedPath = await window.pywebview.api.select_folder();
+                        if (selectedPath) {
+                            documentPaths.push({ path: selectedPath, checked: true });
+                            renderDocumentPathList();
+                        }
+                    } catch (error) {
+                        console.error('Error selecting folder:', error);
+                    }
+                }
+            });
+            
+            // Index now button for images
             document.getElementById('indexNowBtn').addEventListener('click', () => {
                 const selectedPaths = imagePaths
                     .filter(item => item.checked)
@@ -682,8 +819,44 @@
                 }
             });
             
+            // Index now button for documents
+            document.getElementById('indexDocumentsNowBtn').addEventListener('click', () => {
+                const selectedPaths = documentPaths
+                    .filter(item => item.checked)
+                    .map(item => item.path);
+                
+                if (selectedPaths.length > 0) {
+                    indexDocumentsWithPaths(selectedPaths);
+                } else {
+                    const status = document.getElementById('statusMessage');
+                    status.textContent = '⚠ Please select at least one path to index';
+                    status.classList.add('show');
+                    setTimeout(() => status.classList.remove('show'), 3000);
+                }
+            });
+            
             // Auto-index toggle
             document.getElementById('autoIndexToggle').addEventListener('click', toggleAutoIndex);
+            
+            // Index button event listeners - must be inside DOMContentLoaded
+            document.getElementById('indexFilesBtn').addEventListener('click', indexFiles);
+            document.getElementById('indexDocumentsBtn').addEventListener('click', indexDocuments);
+            document.getElementById('indexImagesBtn').addEventListener('click', indexImages);
+            
+            // Back button event listener
+            document.getElementById('backBtn').addEventListener('click', async () => {
+                console.log('Back button clicked in settings');
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.back_to_search_from_settings) {
+                    try {
+                        const result = await window.pywebview.api.back_to_search_from_settings();
+                        console.log('back_to_search_from_settings result:', result);
+                    } catch (error) {
+                        console.error('Error calling back_to_search_from_settings:', error);
+                    }
+                } else {
+                    console.error('back_to_search_from_settings API not available');
+                }
+            });
         });
 
         async function indexFiles() {
@@ -867,6 +1040,69 @@
             }
         }
 
+        async function indexDocumentsWithPaths(paths) {
+            const progress = document.getElementById('documentsProgress');
+            const fill = document.getElementById('documentsProgressFill');
+            const text = document.getElementById('documentsProgressText');
+            const status = document.getElementById('statusMessage');
+            const pathSelector = document.getElementById('documentPathSelector');
+            const indexNowBtn = document.getElementById('indexDocumentsNowBtn');
+
+            indexNowBtn.disabled = true;
+            progress.classList.add('show');
+            fill.classList.add('indeterminate');
+            
+            // Show progress stages
+            const stages = [
+                'Scanning documents...',
+                'Analyzing content...',
+                'Generating embeddings...',
+                'Saving to disk...'
+            ];
+            let stageIndex = 0;
+            
+            const progressInterval = setInterval(() => {
+                if (stageIndex < stages.length) {
+                    text.textContent = stages[stageIndex];
+                    stageIndex++;
+                }
+            }, 2000);
+            
+            text.textContent = stages[0];
+
+            try {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.index_documents) {
+                    const result = await window.pywebview.api.index_documents(paths);
+                    
+                    clearInterval(progressInterval);
+                    fill.classList.remove('indeterminate');
+                    fill.style.width = '100%';
+                    text.textContent = result.message || 'Indexing complete!';
+                    
+                    status.textContent = `✓ ${result.message || 'Indexing complete!'}`;
+                    status.classList.remove('error');
+                    status.classList.add('show');
+                    
+                    // Hide dropdown after successful indexing
+                    pathSelector.classList.remove('show');
+                    
+                    setTimeout(() => {
+                        progress.classList.remove('show');
+                        status.classList.remove('show');
+                        fill.style.width = '0%';
+                    }, 4000);
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                fill.classList.remove('indeterminate');
+                status.textContent = '✗ Error indexing documents: ' + error;
+                status.classList.add('error', 'show');
+                progress.classList.remove('show');
+            } finally {
+                indexNowBtn.disabled = false;
+            }
+        }
+
         async function toggleAutoIndex() {
             const toggle = document.getElementById('autoIndexToggle');
             const status = document.getElementById('statusMessage');
@@ -895,17 +1131,6 @@
                 toggle.classList.toggle('active', isAutoIndexEnabled);
             }
         }
-
-        document.getElementById('indexFilesBtn').addEventListener('click', indexFiles);
-        document.getElementById('indexDocumentsBtn').addEventListener('click', indexDocuments);
-        document.getElementById('indexImagesBtn').addEventListener('click', indexImages);
-        document.getElementById('autoIndexToggle').addEventListener('click', toggleAutoIndex);
-        
-        document.getElementById('backBtn').addEventListener('click', () => {
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.back_to_search) {
-                window.pywebview.api.back_to_search();
-            }
-        });
 
         // Load auto-index state on page load
         window.addEventListener('load', async () => {
