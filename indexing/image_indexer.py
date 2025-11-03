@@ -7,23 +7,17 @@ import clip
 from PIL import Image
 import numpy as np
 import sqlite3
-import time
-import os
-import json
-import ctypes
+from config import IMAGE_EMBEDDINGS_DB
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
 
-
-def save_embeddings(image_paths, image_embeddings):
-    """
-    Saves the embeddings to an SQL file
-    :return:
-    """
-    conn = sqlite3.connect("embeddings.db")
+def init_db():
+    """Initialize the image embeddings database"""
+    conn = sqlite3.connect(IMAGE_EMBEDDINGS_DB)
     c = conn.cursor()
-
+    
     # Create table if it doesn't exist
     c.execute("""
         CREATE TABLE IF NOT EXISTS embeddings (
@@ -32,6 +26,19 @@ def save_embeddings(image_paths, image_embeddings):
             embedding BLOB
         )
     """)
+    
+    conn.commit()
+    conn.close()
+    print(f"Initialized image embeddings database at {IMAGE_EMBEDDINGS_DB}")
+
+
+def save_embeddings(image_paths, image_embeddings):
+    """
+    Saves the embeddings to an SQL file
+    :return:
+    """
+    conn = sqlite3.connect(IMAGE_EMBEDDINGS_DB)
+    c = conn.cursor()
 
     for path, embedding in zip(image_paths, image_embeddings):
         embedding = embedding.squeeze().astype(np.float32)  # ensure shape [512], correct type
@@ -55,6 +62,9 @@ def index_images(path_list: list = None, progress_callback=None) -> dict:
         dict with status, message, and count
     """
     try:
+        # Initialize database
+        init_db()
+        
         print(f"Starting image indexing from {len(path_list)} path(s)...")
         images = find_media(path_list)
         print(f"Found {len(images)} images to index")

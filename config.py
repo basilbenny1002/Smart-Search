@@ -5,9 +5,9 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 TREES_DIR = os.path.join(DATA_DIR, "trees")
-EMBEDDINGS_DB = os.path.join(DATA_DIR, "embeddings.db")
+IMAGE_EMBEDDINGS_DB = os.path.join(DATA_DIR, "image_embeddings.db")
 TEXT_EMBEDDINGS_DB = os.path.join(DATA_DIR, "text_embeddings.db")
-FILE_DATA_JSON = os.path.join(DATA_DIR, "file_data.json")
+FILE_DATA_JSON = os.path.join(TREES_DIR, "file_data.json")  # Keep in trees folder
 
 # UI Settings
 UI_DIR = os.path.join(BASE_DIR, "ui")

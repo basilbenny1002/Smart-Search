@@ -30,6 +30,8 @@ def init_db():
 
 def find_document_files(paths: List[str]) -> List[str]:
     """Find all document files in the given paths"""
+    from config import SKIP_PATTERNS
+    
     document_files = []
 
     for path in paths:
@@ -44,6 +46,11 @@ def find_document_files(paths: List[str]) -> List[str]:
             for root, _, files in os.walk(path):
                 # Skip hidden and system folders
                 if any(skip in root.lower() for skip in ['$recycle', 'system volume', 'windows', 'appdata']):
+                    continue
+                
+                # Skip paths containing skip patterns
+                root_lower = root.lower()
+                if any(pattern in root_lower for pattern in SKIP_PATTERNS):
                     continue
                     
                 for file in files:

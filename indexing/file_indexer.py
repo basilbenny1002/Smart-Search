@@ -1,10 +1,17 @@
 """File and folder indexing functionality"""
 import os
+import string
 from typing import List
 from models.data_models import FileData
 from utils.helpers import is_hidden, is_accessible, timeit
-from config import SKIP_FOLDERS, SKIP_FILES, SKIP_PATTERNS, ROOT_INDEXING_PATH
+from config import SKIP_FOLDERS, SKIP_FILES, SKIP_PATTERNS, ROOT_INDEXING_PATH, VALID_SYMBOLS
 from pyuac import main_requires_admin
+
+
+def has_valid_characters(filename: str) -> bool:
+    """Check if filename contains only valid characters (letters, digits, and valid symbols)"""
+    ALLOWED = set(string.ascii_letters + string.digits).union(VALID_SYMBOLS)
+    return all(ch in ALLOWED for ch in filename)
 
 
 def collect_entries(root_dir: str) -> List[FileData]:
@@ -13,6 +20,7 @@ def collect_entries(root_dir: str) -> List[FileData]:
     Returns list of FileData(name, full_path, type).
     """
     file_list = []
+    skipped_count = 0
 
     for root, dirs, files in os.walk(root_dir, topdown=True, onerror=lambda e: None):
         allowed_dirs = []
@@ -24,6 +32,11 @@ def collect_entries(root_dir: str) -> List[FileData]:
                 continue
 
             if (is_hidden(full_d) or name_l in SKIP_FOLDERS or not is_accessible(full_d)):
+                continue
+            
+            # Skip directories with invalid characters
+            if not has_valid_characters(d):
+                skipped_count += 1
                 continue
 
             allowed_dirs.append(d)
@@ -37,9 +50,17 @@ def collect_entries(root_dir: str) -> List[FileData]:
 
             if (is_hidden(full_f) or name_l in SKIP_FILES or not is_accessible(full_f)):
                 continue
+            
+            # Skip files with invalid characters
+            if not has_valid_characters(f):
+                skipped_count += 1
+                continue
 
             ext = os.path.splitext(f)[1].lower().strip('.') or 'unknown'
             file_list.append(FileData(f, full_f, ext))
+    
+    if skipped_count > 0:
+        print(f"Skipped {skipped_count} items with unsupported characters")
 
     return file_list
 

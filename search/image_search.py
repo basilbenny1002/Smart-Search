@@ -6,6 +6,7 @@ import clip
 import torch
 import threading
 import time
+from config import IMAGE_EMBEDDINGS_DB
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
@@ -32,7 +33,7 @@ def load_embeddings():
         return image_embeddings, image_paths
     
     print("Loading embeddings from database...")
-    conn = sqlite3.connect("embeddings.db")
+    conn = sqlite3.connect(IMAGE_EMBEDDINGS_DB)
     c = conn.cursor()
 
     c.execute("SELECT path, embedding FROM embeddings")

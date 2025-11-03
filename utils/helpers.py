@@ -75,11 +75,19 @@ def find_media(directories: list):
     :param directories:
     :return Valid image directories:
     """
+    from config import SKIP_PATTERNS, FILE_DATA_JSON
+    
     valid_images = []
     for directories in directories:
         for root, _, files in os.walk(directories):
             if is_hidden(root):
                 continue
+            
+            # Skip paths containing skip patterns
+            root_lower = root.lower()
+            if any(pattern in root_lower for pattern in SKIP_PATTERNS):
+                continue
+            
             for file in files:
                 file_path = os.path.join(root, file)
                 ext = os.path.splitext(file)[1].lower()
@@ -87,7 +95,7 @@ def find_media(directories: list):
                 if ext in VALID_IMAGE_EXTENSIONS and os.path.getsize(file_path) > 10 * 1024 and 'windows' not in file_path.lower() and 'xampp' not in file_path.lower() and len(file) > 3 and file_path not in valid_images:  # Ignore small files
                     valid_images.append(file_path)
         json_data = {path:"" for path in valid_images}
-        with open('file_data.json', 'w') as data:
+        with open(FILE_DATA_JSON, 'w') as data:
             json.dump(json_data, data)
 
     return valid_images
