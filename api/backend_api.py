@@ -251,7 +251,9 @@ class SearchAPI:
             if not self._main_window:
                 return "no-window"
             
-            new_width = WINDOW_WIDTH
+            # Preserve current width, only change height
+            current_width = self._main_window.width
+            new_width = current_width if current_width else WINDOW_WIDTH
             new_height = WINDOW_HEIGHT_EXPANDED if expand else WINDOW_HEIGHT
             
             print(f"Resizing window to: {new_width}x{new_height} (expand={expand})")
