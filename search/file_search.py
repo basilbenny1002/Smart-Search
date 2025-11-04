@@ -4,7 +4,7 @@ import json
 import string
 from typing import List
 from models.data_models import Tree, FileData
-from config import TREES_DIR, SYMBOL_MAP, DIGIT_MAP
+from config import DATA_DIR, TREES_DIR, SYMBOL_MAP, DIGIT_MAP
 import sqlite3
 from utils.helpers import get_value, timeit
 
@@ -163,7 +163,8 @@ def search_tree(prefix: str) -> List[FileData]:
 
 def initiate_db():
     """Initialize the SQLite database for file search index."""
-    db_path = os.path.join(TREES_DIR, "file_search.db")
+    from config import DATA_DIR
+    db_path = os.path.join(DATA_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
     
     # Enable WAL mode for faster writes
@@ -208,7 +209,8 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
     """
     initiate_db()
     
-    db_path = os.path.join(TREES_DIR, "file_search.db")
+    from config import DATA_DIR
+    db_path = os.path.join(DATA_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
     
     # Enable JSON functions
@@ -232,9 +234,9 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
             prefix_chars.append(get_value(char))
         normalized_key = ''.join(prefix_chars)
         
-        # Add to batch (key, single file as JSON array)
+        # Add to batch (key, file_json, file_json again for ON CONFLICT)
         file_json = json.dumps([file_data.to_dict()])
-        batch.append((normalized_key, file_json))
+        batch.append((normalized_key, file_json, file_json))
         
         # Execute batch when size reached
         if len(batch) >= batch_size:
@@ -293,7 +295,8 @@ def search_db(query: str, limit: int = 200) -> List[FileData]:
         prefix_chars.append(get_value(char))
     prefix = ''.join(prefix_chars)
     
-    db_path = os.path.join(TREES_DIR, "file_search.db")
+    from config import DATA_DIR
+    db_path = os.path.join(DATA_DIR, "file_search.db")
     
     if not os.path.exists(db_path):
         print(f"Database not found: {db_path}")
@@ -319,18 +322,84 @@ def search_db(query: str, limit: int = 200) -> List[FileData]:
     # Deserialize all matching files
     files = []
     for row in results:
-        files_dicts = json.loads(row[0])
-        for f_dict in files_dicts:
-            files.append(FileData.from_dict(f_dict))
+        files_data = json.loads(row[0])
+        
+        # Handle both single array and nested arrays (due to json_insert behavior)
+        if isinstance(files_data, list):
+            for item in files_data:
+                # If item is a dict (FileData), add it directly
+                if isinstance(item, dict):
+                    files.append(FileData.from_dict(item))
+                # If item is a list (nested due to json_insert), flatten it
+                elif isinstance(item, list):
+                    for nested_item in item:
+                        if isinstance(nested_item, dict):
+                            files.append(FileData.from_dict(nested_item))
             
-            # Stop if we've reached the limit
-            if len(files) >= limit:
-                return files
+                # Stop if we've reached the limit
+                if len(files) >= limit:
+                    return files
     
     return files
 
 
-
+def search_db_startswith(query: str) -> List[FileData]:
+    """
+    Search the SQLite database for ALL files that start with the query.
+    Uses LIKE query to find all matching prefixes.
+    
+    Args:
+        query: Search prefix (e.g., 'ab', 'test', etc.)
+    
+    Returns:
+        List of FileData objects where filename starts with query
+    
+    Alternative approach that searches multiple prefix entries.
+    """
+    if not query:
+        return []
+    
+    # Normalize query
+    normalized_query = query.lower()
+    prefix_chars = []
+    for char in normalized_query:
+        prefix_chars.append(get_value(char))
+    prefix = ''.join(prefix_chars)
+    
+    db_path = os.path.join(TREES_DIR, "file_search.db")
+    
+    if not os.path.exists(db_path):
+        print(f"Database not found: {db_path}")
+        return []
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Query for all prefixes starting with the query
+    # This will return multiple rows
+    cursor.execute("""
+        SELECT files_json FROM file_index
+        WHERE prefix LIKE ?
+    """, (prefix + '%',))
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    if not results:
+        return []
+    
+    # Collect all unique files from all matching prefixes
+    # Use a dict to avoid duplicates (keyed by file_path)
+    unique_files = {}
+    for row in results:
+        files_json = row[0]
+        files_dicts = json.loads(files_json)
+        for f_dict in files_dicts:
+            file_obj = FileData.from_dict(f_dict)
+            # Use file_path as unique key
+            unique_files[file_obj.file_path] = file_obj
+    
+    return list(unique_files.values())
 
 
     
