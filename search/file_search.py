@@ -165,9 +165,14 @@ def initiate_db():
     """Initialize the SQLite database for file search index."""
     db_path = os.path.join(TREES_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
+    
+    # Enable WAL mode for faster writes
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    
     cursor = conn.cursor()
     
-    # Create table with prefix as primary key and JSON-serialized FileData list
+    # Create table with normalized filename as primary key
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS file_index (
             prefix TEXT PRIMARY KEY,
@@ -175,98 +180,108 @@ def initiate_db():
         )
     """)
     
+    # Create index for faster LIKE queries
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_prefix ON file_index(prefix)
+    """)
+    
     conn.commit()
     conn.close()
     print(f"Initialized database at {db_path}")
 
 
-def build_search_index(file_list: List[FileData], progress_callback=None) -> None:
+def build_search_index(file_list: List[FileData], progress_callback=None, batch_size=5000) -> None:
     """
     Build SQLite search index from file list.
     
-    For each file, creates entries for all prefixes:
-    - File 'abc.txt' creates entries: 'a', 'ab', 'abc'
-    - Each entry stores list of FileData objects as JSON
+    Stores each unique filename once with array of FileData objects.
+    Uses SQLite's json_insert to append on conflict.
     
-    This version writes directly to DB to save RAM.
+    Args:
+        file_list: List of FileData objects to index
+        progress_callback: Optional callback for progress updates
+        batch_size: Number of files to insert per batch (default 5000)
+    
+    Example:
+    - 'test.txt' at C:/Documents → stored once
+    - 'test.txt' at C:/Downloads → appended to same key
     """
     initiate_db()
     
     db_path = os.path.join(TREES_DIR, "file_search.db")
     conn = sqlite3.connect(db_path)
+    
+    # Enable JSON functions
+    conn.execute("PRAGMA journal_mode=WAL")
+    
     cursor = conn.cursor()
     
     total = len(file_list)
+    batch = []
+    
     for idx, file_data in enumerate(file_list):
         if not file_data.file_name:
             continue
         
-        # Normalize the filename to lowercase for prefix matching
+        # Normalize the filename to lowercase
         normalized_name = file_data.file_name.lower()
         
-        # Create all prefixes for this file
-        # e.g., "abc" -> ["a", "ab", "abc"]
-        for i in range(1, len(normalized_name) + 1):
-            # Build prefix character by character
-            prefix_chars = []
-            for j in range(i):
-                char = normalized_name[j]
-                # Use get_value to handle special characters
-                prefix_chars.append(get_value(char))
-            
-            prefix = ''.join(prefix_chars)
-            
-            # Check if prefix already exists
-            cursor.execute("""
-                SELECT files_json FROM file_index WHERE prefix = ?
-            """, (prefix,))
-            
-            result = cursor.fetchone()
-            
-            if result:
-                # Prefix exists - load existing files, append new one, update
-                existing_json = result[0]
-                existing_files = json.loads(existing_json)
-                existing_files.append(file_data.to_dict())
-                
-                # Update the row
-                cursor.execute("""
-                    UPDATE file_index SET files_json = ? WHERE prefix = ?
-                """, (json.dumps(existing_files), prefix))
-            else:
-                # Prefix doesn't exist - create new entry
-                files_json = json.dumps([file_data.to_dict()])
-                cursor.execute("""
-                    INSERT INTO file_index (prefix, files_json) VALUES (?, ?)
-                """, (prefix, files_json))
+        # Convert special characters using get_value
+        prefix_chars = []
+        for char in normalized_name:
+            prefix_chars.append(get_value(char))
+        normalized_key = ''.join(prefix_chars)
         
-        # Free up memory: clear this file's data after it's been written to DB
-        # This helps reduce RAM usage during indexing
+        # Add to batch (key, single file as JSON array)
+        file_json = json.dumps([file_data.to_dict()])
+        batch.append((normalized_key, file_json))
+        
+        # Execute batch when size reached
+        if len(batch) >= batch_size:
+            # Use INSERT with ON CONFLICT to append
+            cursor.executemany("""
+                INSERT INTO file_index (prefix, files_json) VALUES (?, ?)
+                ON CONFLICT(prefix) DO UPDATE SET
+                    files_json = json_insert(files_json, '$[#]', json(?))
+            """, batch)
+            conn.commit()
+            batch = []
+        
+        # Free up memory
         file_list[idx] = None
         
-        # Commit every 100 files for performance
-        if idx % 100 == 0:
-            conn.commit()
-            if progress_callback:
-                progress_callback(idx, total)
+        # Progress callback
+        if progress_callback and idx % 100 == 0:
+            progress_callback(idx, total)
     
-    # Final commit
-    conn.commit()
+    # Insert remaining batch
+    if batch:
+        cursor.executemany("""
+            INSERT INTO file_index (prefix, files_json) VALUES (?, ?)
+            ON CONFLICT(prefix) DO UPDATE SET
+                files_json = json_insert(files_json, '$[#]', json(?))
+        """, batch)
+        conn.commit()
+    
     conn.close()
-    print(f"Search index built with {total} files")
+    print(f"Search index built with {total} files (unique filenames stored once)")
 
 
-def search_db(query: str) -> List[FileData]:
+def search_db(query: str, limit: int = 200) -> List[FileData]:
     """
     Search the SQLite database for files matching the query prefix.
+    Uses LIKE query to find all filenames starting with the prefix.
     
     Args:
-        query: Search prefix (e.g., 'ab', 'test', etc.)
+        query: Search prefix (e.g., 't', 'te', 'test')
+        limit: Maximum number of results to return (default 200)
     
     Returns:
         List of FileData objects matching the prefix
     
-    This is an alternative to search_tree() - not yet connected to main code.
+    Example:
+    - Query 't' finds: test.txt, title.txt, temp.doc
+    - Query 'te' finds: test.txt, temp.doc
     """
     if not query:
         return []
@@ -280,7 +295,6 @@ def search_db(query: str) -> List[FileData]:
     
     db_path = os.path.join(TREES_DIR, "file_search.db")
     
-    # Check if database exists
     if not os.path.exists(db_path):
         print(f"Database not found: {db_path}")
         return []
@@ -288,64 +302,13 @@ def search_db(query: str) -> List[FileData]:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Query for exact prefix match
-    cursor.execute("""
-        SELECT files_json FROM file_index
-        WHERE prefix = ?
-    """, (prefix,))
-    
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result is None:
-        return []
-    
-    # Deserialize JSON back to FileData objects
-    files_json = result[0]
-    files_dicts = json.loads(files_json)
-    files = [FileData.from_dict(f) for f in files_dicts]
-    
-    return files
-
-
-def search_db_startswith(query: str) -> List[FileData]:
-    """
-    Search the SQLite database for ALL files that start with the query.
-    Uses LIKE query to find all matching prefixes.
-    
-    Args:
-        query: Search prefix (e.g., 'ab', 'test', etc.)
-    
-    Returns:
-        List of FileData objects where filename starts with query
-    
-    Alternative approach that searches multiple prefix entries.
-    """
-    if not query:
-        return []
-    
-    # Normalize query
-    normalized_query = query.lower()
-    prefix_chars = []
-    for char in normalized_query:
-        prefix_chars.append(get_value(char))
-    prefix = ''.join(prefix_chars)
-    
-    db_path = os.path.join(TREES_DIR, "file_search.db")
-    
-    if not os.path.exists(db_path):
-        print(f"Database not found: {db_path}")
-        return []
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Query for all prefixes starting with the query
-    # This will return multiple rows
+    # Use LIKE query to find all filenames starting with prefix
+    # LIMIT results for performance
     cursor.execute("""
         SELECT files_json FROM file_index
         WHERE prefix LIKE ?
-    """, (prefix + '%',))
+        LIMIT ?
+    """, (prefix + '%', limit))
     
     results = cursor.fetchall()
     conn.close()
@@ -353,18 +316,21 @@ def search_db_startswith(query: str) -> List[FileData]:
     if not results:
         return []
     
-    # Collect all unique files from all matching prefixes
-    # Use a dict to avoid duplicates (keyed by file_path)
-    unique_files = {}
+    # Deserialize all matching files
+    files = []
     for row in results:
-        files_json = row[0]
-        files_dicts = json.loads(files_json)
+        files_dicts = json.loads(row[0])
         for f_dict in files_dicts:
-            file_obj = FileData.from_dict(f_dict)
-            # Use file_path as unique key
-            unique_files[file_obj.file_path] = file_obj
+            files.append(FileData.from_dict(f_dict))
+            
+            # Stop if we've reached the limit
+            if len(files) >= limit:
+                return files
     
-    return list(unique_files.values())
+    return files
+
+
+
 
 
     
