@@ -469,7 +469,23 @@
 
             let results = [];
             try {
-                if (window.pywebview?.api?.search) results = await window.pywebview.api.search(query, currentSearchType);
+                // Pass active filter to backend for normal search
+                if (window.pywebview?.api?.search) {
+                    if (currentSearchType === 'normal' && activeFilter !== 'all') {
+                        // Map frontend filter names to backend categories
+                        const filterMap = {
+                            'folder': 'folder',
+                            'image': 'image',
+                            'video': 'video',
+                            'doc': 'document',
+                            'other': 'file'
+                        };
+                        const category = filterMap[activeFilter] || null;
+                        results = await window.pywebview.api.search(query, currentSearchType, category);
+                    } else {
+                        results = await window.pywebview.api.search(query, currentSearchType);
+                    }
+                }
             } catch (e) { console.warn(e); }
 
             loadingIndicator.classList.remove('show');
@@ -484,16 +500,25 @@
                 score: r.score || 0
             }));
 
-            const filtered = normalized.filter(item => {
-                if (activeFilter === 'all') return true;
-                const t = (item.type || '').toLowerCase();
-                if (activeFilter === 'folder') return t === 'folder';
-                if (activeFilter === 'image') return ['png','jpg','jpeg','gif','bmp','webp','image'].includes(t);
-                if (activeFilter === 'video') return ['mp4','mkv','mov','avi','video'].includes(t);
-                if (activeFilter === 'doc')   return ['pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx'].includes(t);
-                if (activeFilter === 'other') return !['png','jpg','jpeg','gif','bmp','webp','image','mp4','mkv','mov','avi','video','pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx','folder'].includes(t);
-                return true;
-            });
+            // For normal search with category filter, results are already filtered by backend
+            // For other search types or 'all' filter, apply client-side filtering
+            let filtered;
+            if (currentSearchType === 'normal' && activeFilter !== 'all') {
+                // Backend already filtered, use results as-is
+                filtered = normalized;
+            } else {
+                // Apply client-side filtering for image/text search or 'all' filter
+                filtered = normalized.filter(item => {
+                    if (activeFilter === 'all') return true;
+                    const t = (item.type || '').toLowerCase();
+                    if (activeFilter === 'folder') return t === 'folder';
+                    if (activeFilter === 'image') return ['png','jpg','jpeg','gif','bmp','webp','image'].includes(t);
+                    if (activeFilter === 'video') return ['mp4','mkv','mov','avi','video'].includes(t);
+                    if (activeFilter === 'doc')   return ['pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx'].includes(t);
+                    if (activeFilter === 'other') return !['png','jpg','jpeg','gif','bmp','webp','image','mp4','mkv','mov','avi','video','pdf','ppt','pptx','xls','xlsx','csv','md','txt','rtf','doc','docx','folder'].includes(t);
+                    return true;
+                });
+            }
 
             currentResults = filtered; selectedIndex = -1;
             displayResults(filtered);

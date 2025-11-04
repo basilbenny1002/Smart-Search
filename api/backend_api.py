@@ -45,20 +45,20 @@ class SearchAPI:
         self._main_window = window
 
     # Search methods
-    def search(self, query: str, search_type: str = 'normal') -> List[Dict[str, Any]]:
+    def search(self, query: str, search_type: str = 'normal', category: str = None) -> List[Dict[str, Any]]:
         """Main search entry point"""
-        print(f"Search API: query='{query}', type='{search_type}'")
+        print(f"Search API: query='{query}', type='{search_type}', category='{category}'")
         
         if search_type == 'normal':
-            return self._file_search(query)
+            return self._file_search(query, category)
         elif search_type == 'image':
             return self._image_search(query)
         elif search_type == 'text':
             return self._text_search(query)
         else:
-            return self._file_search(query)
+            return self._file_search(query, category)
 
-    def _file_search(self, query: str) -> List[Dict[str, Any]]:
+    def _file_search(self, query: str, category: str = None) -> List[Dict[str, Any]]:
         """Normal file/folder search"""
         q = clean_query(query)
         if not q:
@@ -73,9 +73,10 @@ class SearchAPI:
         #     print(f"File search error: {e}")
         #     return []
         
-        # New SQLite-based search
+        # New SQLite-based search with category filtering
         try:
-            matches = search_db(q)
+            categories = [category] if category else None
+            matches = search_db(q, limit=200, categories=categories)
             print(f"Found {len(matches)} matches")
             return [_file_to_dict(m) for m in (matches or [])]
         except Exception as e:
