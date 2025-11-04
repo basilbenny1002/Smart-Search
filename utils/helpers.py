@@ -13,7 +13,9 @@ if os.name == 'nt':
 
 
 def timeit(func):
-    """Decorator to measure execution time of a function."""
+    """Decorator to measure execution time of a function.
+        was made to help debug performance issues.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()
@@ -25,7 +27,10 @@ def timeit(func):
 
 
 def is_hidden(path: str) -> bool:
-    """Return True if path is hidden/system."""
+    """Return True if path is hidden/system
+    params: path: str - file or directory path
+    return: bool - True if hidden/system, False otherwise
+    """
     if os.name == 'nt':
         try:
             attrs = ctypes.windll.kernel32.GetFileAttributesW(str(path))
@@ -39,20 +44,29 @@ def is_hidden(path: str) -> bool:
 
 
 def is_accessible(path: str) -> bool:
-    """Check if we can read (and enter if directory)."""
+    """Check if we can read (and enter if directory).
+        params: path: str - file or directory path
+        return: bool - True if accessible, False otherwise
+    """
     if os.path.isdir(path):
         return os.access(path, os.R_OK | os.X_OK)
     return os.access(path, os.R_OK)
 
 
 def check_letters(s: str) -> bool:
-    """Return True if all characters are allowed."""
+    """Return True if all characters are allowed based on the valid symbols in config and letters and digits.
+    param s: str - input string
+    return: bool - True if all characters are allowed, False otherwise"""
     ALLOWED = set(string.ascii_letters + string.digits).union(VALID_SYMBOLS)
     return all(ch in ALLOWED for ch in s)
 
 
 def get_value(ch: str) -> str:
-    """Return the valid Tree attribute name for a given character."""
+    """Return the valid Tree attribute name for a given character.
+    this is used to map characters to tree nodes
+    param ch: str - input character 
+    return: str - valid attribute name
+    """
     if ch.isalpha():
         return ch.lower()
     elif ch in DIGIT_MAP:

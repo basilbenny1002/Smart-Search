@@ -1,7 +1,8 @@
 """Data models for file and tree structures"""
 import string
 
-
+# The following Tree model was used for indexing files and folders into a tree structure
+# Since the indexing has moved to SQLite, this is retained for reference and potential future use.
 class Tree:
     """Tree structure for fast prefix-based file search"""
     
@@ -67,6 +68,8 @@ class Tree:
             if isinstance(value, dict):
                 setattr(node, key, cls.from_dict(value))
         return node
+
+
 
 
 class FileData:

@@ -16,7 +16,7 @@ from indexing.text_indexer import index_documents as do_text_indexing
 from search.image_search import search_images, is_embeddings_loaded, force_load_embeddings
 from search.text_search import search_text_content
 from utils.helpers import clean_query, get_value
-from config import UI_DIR, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED
+from config import UI_DIR, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED, DEFAULT_SEARCH_LIMIT, MAX_IMAGE_SEARCH_RESULTS
 
 
 def _file_to_dict(fd: FileData) -> Dict[str, Any]:
@@ -51,7 +51,7 @@ class SearchAPI:
         
         # Use default limit if not specified
         if limit is None:
-            limit = 200
+            limit = DEFAULT_SEARCH_LIMIT
         
         if search_type == 'normal':
             return self._file_search(query, category, limit)
@@ -62,7 +62,7 @@ class SearchAPI:
         else:
             return self._file_search(query, category, limit)
 
-    def _file_search(self, query: str, category: str = None, limit: int = 200) -> List[Dict[str, Any]]:
+    def _file_search(self, query: str, category: str = None, limit: int = DEFAULT_SEARCH_LIMIT) -> List[Dict[str, Any]]:
         """Normal file/folder search"""
         q = clean_query(query)
         if not q:
@@ -87,12 +87,12 @@ class SearchAPI:
             print(f"File search error: {e}")
             return []
 
-    def _image_search(self, query: str, limit: int = 200) -> List[Dict[str, Any]]:
+    def _image_search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> List[Dict[str, Any]]:
         """Image search by description"""
         try:
             results = search_images(query)
-            # Apply limit (default to 50 for images to avoid loading too many)
-            max_results = min(limit, 50) if limit else 50
+            # Apply limit (cap at MAX_IMAGE_SEARCH_RESULTS for images to avoid loading too many)
+            max_results = min(limit, MAX_IMAGE_SEARCH_RESULTS) if limit else MAX_IMAGE_SEARCH_RESULTS
             processed_results = []
             
             for p in results[:max_results]:
@@ -127,7 +127,7 @@ class SearchAPI:
             print(f"Image search error: {e}")
             return []
 
-    def _text_search(self, query: str, limit: int = 200) -> List[Dict[str, Any]]:
+    def _text_search(self, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> List[Dict[str, Any]]:
         """Text content search"""
         try:
             # Note: search_text_content would need to be updated to accept limit parameter

@@ -4,7 +4,7 @@ import json
 import string
 from typing import List
 from models.data_models import Tree, FileData
-from config import DATA_DIR, TREES_DIR, SYMBOL_MAP, DIGIT_MAP
+from config import DATA_DIR, TREES_DIR, SYMBOL_MAP, DIGIT_MAP, FILE_SEARCH_DB, BATCH_SIZE, DEFAULT_SEARCH_LIMIT
 import sqlite3
 from utils.helpers import get_value, timeit
 
@@ -18,6 +18,9 @@ all_names = (
     list(DIGIT_MAP.values()) +
     list(SYMBOL_MAP.values())
 )
+
+
+ #THE FOLLOWING LINES OF CODE WAS OF A DIFFERENT APPROACH USING IN-MEMORY TREES NOT USING SQLITE. THIS CODE IS KEPT FOR REFERENCE BUT THE ACTUAL SEARCH USES SQLITE NOW
 trees = {name: Tree(name) for name in all_names}
 
 
@@ -157,9 +160,12 @@ def search_tree(prefix: str) -> List[FileData]:
     
     return current_node.files if current_node else []
 
+#THE ABOVE CODE WAS OF A DIFFERENT APPROACH USING IN-MEMORY TREES NOT USING SQLITE. THIS CODE IS KEPT FOR REFERENCE BUT THE ACTUAL SEARCH USES SQLITE NOW
+
+
 # ========== SQLite-based Search Index (Alternative to Tree) ==========
 # This is a new approach that stores file data in SQLite instead of tree structures
-# Not yet connected to main code - for review/testing first
+#THIS IS IMPLEMENTED AND WORKS WELL 
 
 def get_file_category(file_type: str) -> str:
     """
@@ -192,9 +198,7 @@ def get_file_category(file_type: str) -> str:
 
 def initiate_db():
     """Initialize the SQLite database for file search index."""
-    from config import DATA_DIR
-    db_path = os.path.join(DATA_DIR, "file_search.db")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(FILE_SEARCH_DB)
     
     # Enable WAL mode for faster writes
     conn.execute("PRAGMA journal_mode=WAL")
@@ -223,17 +227,17 @@ def initiate_db():
         CREATE INDEX IF NOT EXISTS idx_category ON file_index(file_category, prefix)
     """)
     
-    # Create index for extension filtering (for future use)
+    # Create index for extension filtering (for future use, current filtering is based on file_category)
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_extension ON file_index(file_extension, prefix)
     """)
     
     conn.commit()
     conn.close()
-    print(f"Initialized database at {db_path}")
+    print(f"Initialized database at {FILE_SEARCH_DB}")
 
 
-def build_search_index(file_list: List[FileData], progress_callback=None, batch_size=5000) -> None:
+def build_search_index(file_list: List[FileData], progress_callback=None, batch_size=BATCH_SIZE) -> None:
     """
     Build SQLite search index from file list.
     
@@ -243,7 +247,7 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
     Args:
         file_list: List of FileData objects to index
         progress_callback: Optional callback for progress updates
-        batch_size: Number of files to insert per batch (default 5000)
+        batch_size: Number of files to insert per batch (default from config)
     
     Example:
     - 'test.txt' at C:/Documents → stored once
@@ -251,9 +255,7 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
     """
     initiate_db()
     
-    from config import DATA_DIR
-    db_path = os.path.join(DATA_DIR, "file_search.db")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(FILE_SEARCH_DB)
     
     # Enable JSON functions
     conn.execute("PRAGMA journal_mode=WAL")
@@ -270,7 +272,7 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
         # Normalize the filename to lowercase
         normalized_name = file_data.file_name.lower()
         
-        # Convert special characters using get_value
+        # Convert special characters using get_value since SQLite doesn't handle all of them well
         prefix_chars = []
         for char in normalized_name:
             prefix_chars.append(get_value(char))
@@ -296,14 +298,14 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
             conn.commit()
             batch = []
         
-        # Free up memory
+        # Remove the saved file from memory to free up RAM :D 
         file_list[idx] = None
         
-        # Progress callback
+        # Progress callback yeah that's it
         if progress_callback and idx % 100 == 0:
             progress_callback(idx, total)
     
-    # Insert remaining batch
+    # Insert remaining batch, if the if condition wasn't triggered
     if batch:
         cursor.executemany("""
             INSERT INTO file_index (prefix, file_extension, file_category, files_json) 
@@ -317,7 +319,7 @@ def build_search_index(file_list: List[FileData], progress_callback=None, batch_
     print(f"Search index built with {total} files (unique filenames stored once)")
 
 
-def search_db(query: str, limit: int = 200, categories: List[str] = None) -> List[FileData]:
+def search_db(query: str, limit: int = DEFAULT_SEARCH_LIMIT, categories: List[str] = None) -> List[FileData]:
     """
     Search the SQLite database for files matching the query prefix.
     Uses LIKE query to find all filenames starting with the prefix.
@@ -340,21 +342,14 @@ def search_db(query: str, limit: int = 200, categories: List[str] = None) -> Lis
     if not query:
         return []
     
-    # Normalize query and convert special characters
+    # Normalize query and convert special characters to SQLite-safe form
     normalized_query = query.lower()
     prefix_chars = []
     for char in normalized_query:
         prefix_chars.append(get_value(char))
     prefix = ''.join(prefix_chars)
     
-    from config import DATA_DIR
-    db_path = os.path.join(DATA_DIR, "file_search.db")
-    
-    if not os.path.exists(db_path):
-        print(f"Database not found: {db_path}")
-        return []
-    
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(FILE_SEARCH_DB)
     cursor = conn.cursor()
     
     # Build query with optional category filtering
@@ -399,70 +394,12 @@ def search_db(query: str, limit: int = 200, categories: List[str] = None) -> Lis
                         if isinstance(nested_item, dict):
                             files.append(FileData.from_dict(nested_item))
             
-                # Stop if we've reached the limit
+                # Stop if we've reached the search results limit
                 if len(files) >= limit:
                     return files
     
+    
     return files
-
-
-def search_db_startswith(query: str) -> List[FileData]:
-    """
-    Search the SQLite database for ALL files that start with the query.
-    Uses LIKE query to find all matching prefixes.
-    
-    Args:
-        query: Search prefix (e.g., 'ab', 'test', etc.)
-    
-    Returns:
-        List of FileData objects where filename starts with query
-    
-    Alternative approach that searches multiple prefix entries.
-    """
-    if not query:
-        return []
-    
-    # Normalize query
-    normalized_query = query.lower()
-    prefix_chars = []
-    for char in normalized_query:
-        prefix_chars.append(get_value(char))
-    prefix = ''.join(prefix_chars)
-    
-    db_path = os.path.join(TREES_DIR, "file_search.db")
-    
-    if not os.path.exists(db_path):
-        print(f"Database not found: {db_path}")
-        return []
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Query for all prefixes starting with the query
-    # This will return multiple rows
-    cursor.execute("""
-        SELECT files_json FROM file_index
-        WHERE prefix LIKE ?
-    """, (prefix + '%',))
-    
-    results = cursor.fetchall()
-    conn.close()
-    
-    if not results:
-        return []
-    
-    # Collect all unique files from all matching prefixes
-    # Use a dict to avoid duplicates (keyed by file_path)
-    unique_files = {}
-    for row in results:
-        files_json = row[0]
-        files_dicts = json.loads(files_json)
-        for f_dict in files_dicts:
-            file_obj = FileData.from_dict(f_dict)
-            # Use file_path as unique key
-            unique_files[file_obj.file_path] = file_obj
-    
-    return list(unique_files.values())
 
 
     

@@ -69,7 +69,7 @@ def collect_entries(root_dir: str) -> List[FileData]:
 
 def index_files(root_dir: str = ROOT_INDEXING_PATH, progress_callback=None) -> dict:
     """
-    Index all files and folders, building tree structures.
+    Index all files and folders to an SQlite database..
     Returns dict with status and count.
     
     progress_callback: function(stage, message) to report progress
@@ -105,7 +105,7 @@ def index_files(root_dir: str = ROOT_INDEXING_PATH, progress_callback=None) -> d
         # New SQLite-based method
         build_search_index(entries, progress_callback)
         
-        # Entries are already cleared by build_search_index (sets to None during iteration)
+        # Entries are already cleared by build_search_index (sets teh values to None during iteration to free up memory)
         print("Clearing file list from memory...")
         entries.clear()
         del entries

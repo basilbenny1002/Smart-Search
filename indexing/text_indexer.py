@@ -60,7 +60,7 @@ def find_document_files(paths: List[str]) -> List[str]:
 
     return document_files
 
-# ---------- Step 1: Extract text ----------
+
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     text = ""
@@ -94,7 +94,6 @@ def chunk_text(text, size=1000, overlap=100):
 
 
 def embed_text(text):
-    # SentenceTransformer works locally
     emb = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
     return emb.astype(np.float32)
 
@@ -132,12 +131,8 @@ def chunk_and_save(file_path):
     print(f"  Saved {len(chunks)} chunks from {os.path.basename(file_path)}")
 
 
-# ---------- Step 3: Search Documents ----------
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
-
-
-
 
 
 

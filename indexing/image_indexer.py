@@ -35,7 +35,8 @@ def init_db():
 def save_embeddings(image_paths, image_embeddings):
     """
     Saves the embeddings to an SQL file
-    :return:
+    param image_paths: list of image file paths
+    param image_embeddings: list of corresponding image embeddings
     """
     conn = sqlite3.connect(IMAGE_EMBEDDINGS_DB)
     c = conn.cursor()
@@ -52,7 +53,7 @@ def save_embeddings(image_paths, image_embeddings):
 
 def index_images(path_list: list = None, progress_callback=None) -> dict:
     """
-    Index images by generating descriptions for semantic search.
+    Index images by converting them into vector embeddings.
     
     Args:
         path_list: List of directory paths to scan for images

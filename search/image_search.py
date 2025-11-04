@@ -9,6 +9,7 @@ import time
 from config import IMAGE_EMBEDDINGS_DB
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+#initialize the CLIP model
 model, preprocess = clip.load("ViT-B/32", device=device)
 
 # Global variables for embeddings cache
@@ -17,7 +18,7 @@ image_paths = None
 embeddings_loaded = False
 last_access_time = None
 unload_timer = None
-UNLOAD_DELAY = 120  # 2 minutes in seconds
+UNLOAD_DELAY = 120  # 2 minutes in seconds, after which embeddings are unloaded automaticallyto save memory
 
 
 def load_embeddings():

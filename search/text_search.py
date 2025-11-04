@@ -5,10 +5,14 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from config import TEXT_EMBEDDINGS_DB, TEXT_SEARCH_MODEL
 
-# Initialize model (fully local)
+# Initialize model )
 model = SentenceTransformer(TEXT_SEARCH_MODEL)
+
 def embed_text(text):
-    # SentenceTransformer works locally
+    """Generate embedding for the given text using the sentence transformer model
+    param text: str - input text to embed
+    return: np.ndarray - embedding vector"""
+
     emb = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
     return emb.astype(np.float32)
 
@@ -52,7 +56,7 @@ def search_text_content(query: str, limit: int = 50):
         # Convert to list format expected by frontend
         results = []
         for file_path, (score, content) in sorted(file_best_scores.items(), key=lambda x: x[1][0], reverse=True)[:limit]:
-            # Extract snippet around query (first 100 chars of content)
+            # Extract the text snippet related to the query
             snippet = content[:100] + "..." if len(content) > 100 else content
             
             results.append({
@@ -69,6 +73,8 @@ def search_text_content(query: str, limit: int = 50):
         return []
     
 def cosine_similarity(a, b):
+    """Calculate cosine similarity between two vectors.
+    param a: np.ndarray - first vector"""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
