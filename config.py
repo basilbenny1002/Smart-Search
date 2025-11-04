@@ -9,6 +9,7 @@ IMAGE_EMBEDDINGS_DB = os.path.join(DATA_DIR, "image_embeddings.db") #Stoered ima
 TEXT_EMBEDDINGS_DB = os.path.join(DATA_DIR, "text_embeddings.db") #Stored text embeddings
 FILE_SEARCH_DB = os.path.join(DATA_DIR, "file_search.db") #stored file search database
 FILE_DATA_JSON = os.path.join(DATA_DIR, "file_data.json")  #stored file metadata for image embeddings
+INDEXED_PATHS_JSON = os.path.join(DATA_DIR, "indexed_paths.json")  #stored paths user chose to index for images/documents
 
 # UI Settings
 UI_DIR = os.path.join(BASE_DIR, "ui")

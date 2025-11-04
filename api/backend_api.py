@@ -2,6 +2,7 @@
 import os
 import subprocess
 import base64
+import json
 from typing import List, Dict, Any
 import webview
 
@@ -16,7 +17,7 @@ from indexing.text_indexer import index_documents as do_text_indexing
 from search.image_search import search_images, is_embeddings_loaded, force_load_embeddings
 from search.text_search import search_text_content
 from utils.helpers import clean_query, get_value
-from config import UI_DIR, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED, DEFAULT_SEARCH_LIMIT, MAX_IMAGE_SEARCH_RESULTS
+from config import UI_DIR, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_HEIGHT_EXPANDED, DEFAULT_SEARCH_LIMIT, MAX_IMAGE_SEARCH_RESULTS, INDEXED_PATHS_JSON
 
 
 def _file_to_dict(fd: FileData) -> Dict[str, Any]:
@@ -150,6 +151,10 @@ class SearchAPI:
             paths = self.get_default_document_paths()
         
         print(f"Indexing documents from {len(paths)} path(s): {paths}")
+        
+        # Save paths to indexed_paths.json
+        self._save_indexed_paths('document_paths', paths)
+        
         return do_text_indexing(paths)
 
     def index_images(self, paths: List[str] = None) -> Dict[str, Any]:
@@ -159,7 +164,35 @@ class SearchAPI:
             paths = self.get_default_image_paths()
         
         print(f"Indexing images from {len(paths)} path(s): {paths}")
+        
+        # Save paths to indexed_paths.json
+        self._save_indexed_paths('image_paths', paths)
+        
         return do_image_indexing(paths)
+    
+    def _save_indexed_paths(self, key: str, paths: List[str]) -> None:
+        """Save indexed paths to JSON file"""
+        try:
+            # Load existing data
+            if os.path.exists(INDEXED_PATHS_JSON):
+                with open(INDEXED_PATHS_JSON, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            else:
+                data = {'image_paths': [], 'document_paths': []}
+            
+            # Update with new paths (merge, avoiding duplicates)
+            existing_paths = set(data.get(key, []))
+            new_paths = existing_paths.union(set(paths))
+            data[key] = list(new_paths)
+            
+            # Save back
+            os.makedirs(os.path.dirname(INDEXED_PATHS_JSON), exist_ok=True)
+            with open(INDEXED_PATHS_JSON, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+            
+            print(f"Saved {len(data[key])} {key} to indexed_paths.json")
+        except Exception as e:
+            print(f"Error saving indexed paths: {e}")
     
     # Image search embedding management
     def check_embeddings_loaded(self) -> Dict[str, Any]:
