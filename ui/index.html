@@ -78,6 +78,100 @@
         }
         .bottom-buttons.hidden { display: none; }
 
+        /* Limit selector container */
+        .limit-selector {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Dropup menu for limit selector */
+        .limit-selector-menu {
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background: rgba(255,255,255,.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            margin-bottom: 8px;
+            min-width: 180px;
+            display: none;
+            z-index: 2001;
+            overflow: hidden;
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
+        }
+        .limit-selector-menu.show { display: block; }
+
+        .limit-option {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all .2s ease;
+            border-bottom: 1px solid rgba(0,0,0,.05);
+            font-size: 12px;
+            color: rgba(30,30,60,.95);
+            font-weight: 500;
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
+        }
+        .limit-option:last-child { border-bottom: none; }
+        .limit-option:hover { background: rgba(100,150,200,.15); }
+        .limit-option.active {
+            background: rgba(100,150,200,.25);
+            border-left: 3px solid rgba(100,150,200,1);
+            padding-left: 13px;
+            font-weight: 600;
+        }
+
+        .limit-option.custom-option {
+            padding: 0;
+            cursor: default;
+        }
+        .limit-option.custom-option:hover {
+            background: transparent;
+        }
+
+        .custom-limit-container {
+            padding: 10px 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .custom-limit-container input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid rgba(100,150,200,.4);
+            border-radius: 6px;
+            background: rgba(255,255,255,.8);
+            font-size: 12px;
+            color: rgba(30,30,60,.95);
+            outline: none;
+            transition: all .2s ease;
+            font-weight: 500;
+        }
+        .custom-limit-container input:focus {
+            border-color: rgba(100,150,200,.8);
+            background: rgba(255,255,255,1);
+        }
+        .custom-limit-container input::placeholder {
+            color: rgba(100,100,140,.6);
+            font-weight: 400;
+        }
+        .custom-limit-container button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s ease;
+            color: #fff;
+            background: linear-gradient(135deg,rgba(100,150,200,0.8),rgba(150,120,200,0.8));
+        }
+        .custom-limit-container button:hover {
+            background: linear-gradient(135deg,rgba(100,150,200,1),rgba(150,120,200,1));
+            transform: translateY(-1px);
+        }
+
         .loading-indicator {
             display: none;
             align-items: center;
@@ -315,6 +409,23 @@
                 <div class="spinner"></div><span>Searching...</span>
             </div>
             <div class="bottom-buttons" id="bottomButtons">
+                <div class="limit-selector">
+                    <button class="icon-button" id="limitBtn" title="Max Results">
+                        Search Results: <span id="limitText">200</span>
+                    </button>
+                    <div class="limit-selector-menu" id="limitMenu">
+                        <div class="limit-option" data-limit="100">100 results</div>
+                        <div class="limit-option active" data-limit="200">200 results</div>
+                        <div class="limit-option" data-limit="500">500 results</div>
+                        <div class="limit-option" data-limit="infinite">Infinite</div>
+                        <div class="limit-option custom-option">
+                            <div class="custom-limit-container">
+                                <input type="number" id="customLimitValue" placeholder="Custom" min="1">
+                                <button id="applyCustomLimit">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <button class="icon-button" id="infoBtn" title="Information">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     Info
@@ -363,6 +474,7 @@
         let currentResults = [];
         let activeFilter = 'all';
         let currentSearchType = 'normal';
+        let maxResultLimit = 200;
 
         const searchInput        = document.getElementById('searchInput');
         const resultsContainer   = document.getElementById('resultsContainer');
@@ -373,6 +485,11 @@
         const hintText           = document.getElementById('hintText');
         const loadingIndicator   = document.getElementById('loadingIndicator');
         const bottomButtons      = document.getElementById('bottomButtons');
+        const limitBtn           = document.getElementById('limitBtn');
+        const limitMenu          = document.getElementById('limitMenu');
+        const limitText          = document.getElementById('limitText');
+        const customLimitValue   = document.getElementById('customLimitValue');
+        const applyCustomLimit   = document.getElementById('applyCustomLimit');
 
         searchIconContainer.innerHTML = getSvgIcon('search');
 
@@ -386,6 +503,65 @@
                 !dropdownMenu.contains(e.target) &&
                 !dropdownToggle.contains(e.target)) {
                 dropdownMenu.classList.remove('show');
+            }
+        });
+
+        /* ---------- Limit selector toggle ---------- */
+        limitBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            limitMenu.classList.toggle('show');
+        });
+        document.addEventListener('click', e => {
+            if (limitMenu.classList.contains('show') &&
+                !limitMenu.contains(e.target) &&
+                !limitBtn.contains(e.target)) {
+                limitMenu.classList.remove('show');
+            }
+        });
+
+        /* ---------- Limit selection ---------- */
+        document.querySelectorAll('.limit-option:not(.custom-option)').forEach(option => {
+            option.addEventListener('click', async () => {
+                const limitValue = option.dataset.limit;
+                
+                if (limitValue === 'infinite') {
+                    maxResultLimit = null;
+                    limitText.textContent = '∞';
+                } else {
+                    maxResultLimit = parseInt(limitValue);
+                    limitText.textContent = limitValue;
+                }
+                
+                document.querySelectorAll('.limit-option:not(.custom-option)').forEach(o => o.classList.remove('active'));
+                option.classList.add('active');
+                limitMenu.classList.remove('show');
+                
+                // Re-run search if there's a query
+                const q = searchInput.value.trim();
+                if (q) performSearch(q);
+            });
+        });
+
+        // Apply custom limit
+        applyCustomLimit.addEventListener('click', async () => {
+            const customValue = customLimitValue.value;
+            if (customValue && !isNaN(customValue) && parseInt(customValue) > 0) {
+                maxResultLimit = parseInt(customValue);
+                limitText.textContent = maxResultLimit;
+                document.querySelectorAll('.limit-option:not(.custom-option)').forEach(o => o.classList.remove('active'));
+                limitMenu.classList.remove('show');
+                customLimitValue.value = '';
+                
+                // Re-run search if there's a query
+                const q = searchInput.value.trim();
+                if (q) performSearch(q);
+            }
+        });
+
+        // Allow Enter key to apply custom limit
+        customLimitValue.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyCustomLimit.click();
             }
         });
 
@@ -469,7 +645,7 @@
 
             let results = [];
             try {
-                // Pass active filter to backend for normal search
+                // Pass active filter and limit to backend for normal search
                 if (window.pywebview?.api?.search) {
                     if (currentSearchType === 'normal' && activeFilter !== 'all') {
                         // Map frontend filter names to backend categories
@@ -481,9 +657,9 @@
                             'other': 'file'
                         };
                         const category = filterMap[activeFilter] || null;
-                        results = await window.pywebview.api.search(query, currentSearchType, category);
+                        results = await window.pywebview.api.search(query, currentSearchType, category, maxResultLimit);
                     } else {
-                        results = await window.pywebview.api.search(query, currentSearchType);
+                        results = await window.pywebview.api.search(query, currentSearchType, null, maxResultLimit);
                     }
                 }
             } catch (e) { console.warn(e); }

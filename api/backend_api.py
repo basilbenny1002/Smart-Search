@@ -45,20 +45,24 @@ class SearchAPI:
         self._main_window = window
 
     # Search methods
-    def search(self, query: str, search_type: str = 'normal', category: str = None) -> List[Dict[str, Any]]:
+    def search(self, query: str, search_type: str = 'normal', category: str = None, limit: int = None) -> List[Dict[str, Any]]:
         """Main search entry point"""
-        print(f"Search API: query='{query}', type='{search_type}', category='{category}'")
+        print(f"Search API: query='{query}', type='{search_type}', category='{category}', limit={limit}")
+        
+        # Use default limit if not specified
+        if limit is None:
+            limit = 200
         
         if search_type == 'normal':
-            return self._file_search(query, category)
+            return self._file_search(query, category, limit)
         elif search_type == 'image':
-            return self._image_search(query)
+            return self._image_search(query, limit)
         elif search_type == 'text':
-            return self._text_search(query)
+            return self._text_search(query, limit)
         else:
-            return self._file_search(query, category)
+            return self._file_search(query, category, limit)
 
-    def _file_search(self, query: str, category: str = None) -> List[Dict[str, Any]]:
+    def _file_search(self, query: str, category: str = None, limit: int = 200) -> List[Dict[str, Any]]:
         """Normal file/folder search"""
         q = clean_query(query)
         if not q:
@@ -76,20 +80,22 @@ class SearchAPI:
         # New SQLite-based search with category filtering
         try:
             categories = [category] if category else None
-            matches = search_db(q, limit=200, categories=categories)
+            matches = search_db(q, limit=limit, categories=categories)
             print(f"Found {len(matches)} matches")
             return [_file_to_dict(m) for m in (matches or [])]
         except Exception as e:
             print(f"File search error: {e}")
             return []
 
-    def _image_search(self, query: str) -> List[Dict[str, Any]]:
+    def _image_search(self, query: str, limit: int = 200) -> List[Dict[str, Any]]:
         """Image search by description"""
         try:
             results = search_images(query)
+            # Apply limit (default to 50 for images to avoid loading too many)
+            max_results = min(limit, 50) if limit else 50
             processed_results = []
             
-            for p in results[:50]:
+            for p in results[:max_results]:
                 try:
                     # Convert image to base64 for pywebview
                     with open(p, "rb") as f:
@@ -121,10 +127,13 @@ class SearchAPI:
             print(f"Image search error: {e}")
             return []
 
-    def _text_search(self, query: str) -> List[Dict[str, Any]]:
+    def _text_search(self, query: str, limit: int = 200) -> List[Dict[str, Any]]:
         """Text content search"""
         try:
-            return search_text_content(query)
+            # Note: search_text_content would need to be updated to accept limit parameter
+            # For now, we'll just pass through and slice results
+            results = search_text_content(query)
+            return results[:limit] if limit else results
         except Exception as e:
             print(f"Text search error: {e}")
             return []
