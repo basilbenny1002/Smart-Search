@@ -3,6 +3,7 @@ import os
 import subprocess
 import base64
 import json
+import shutil
 from typing import List, Dict, Any
 import webview
 
@@ -458,14 +459,136 @@ class SearchAPI:
 
     # Auto-index settings
     def set_auto_index(self, enabled: bool) -> Dict[str, Any]:
-        """Enable/disable auto-indexing"""
-        self._auto_index_enabled = enabled
-        # TODO: Implement autostart script
-        return {
-            "status": "success",
-            "message": f"Auto-indexing {'enabled' if enabled else 'disabled'}",
-            "enabled": enabled
-        }
+        """Enable/disable auto-indexing by building and adding/removing watcher from startup"""
+        try:
+            # Define paths
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            scripts_dir = os.path.join(base_dir, "scripts")
+            watcher_exe_name = "SmartestSearchWatcher.exe"
+            
+            # Startup folder path
+            startup_folder = os.path.join(
+                os.getenv('APPDATA'),
+                r'Microsoft\Windows\Start Menu\Programs\Startup'
+            )
+            startup_exe_path = os.path.join(startup_folder, watcher_exe_name)
+            
+            if enabled:
+                # Step 1: Check if .exe already exists (from previous build)
+                watcher_exe = os.path.join(scripts_dir, "bin", "Release", "net6.0", "win-x64", "publish", watcher_exe_name)
+                
+                if not os.path.exists(watcher_exe):
+                    # Step 2: Build the C# project
+                    print("Building file watcher executable...")
+                    build_result = self._build_watcher(scripts_dir)
+                    
+                    if not build_result["success"]:
+                        return {
+                            "status": "error",
+                            "message": f"Failed to build watcher: {build_result.get('error', 'Unknown error')}",
+                            "enabled": False
+                        }
+                    
+                    watcher_exe = build_result["exe_path"]
+                
+                # Step 3: Copy to startup folder
+                print(f"Copying watcher to startup folder: {startup_folder}")
+                shutil.copy(watcher_exe, startup_exe_path)
+                
+                # Step 4: Start the watcher now
+                print("Starting file watcher...")
+                subprocess.Popen([startup_exe_path], creationflags=subprocess.CREATE_NO_WINDOW)
+                
+                self._auto_index_enabled = True
+                return {
+                    "status": "success",
+                    "message": "Auto-indexing enabled. File watcher is now running.",
+                    "enabled": True
+                }
+            else:
+                # Disable: Remove from startup and kill process
+                if os.path.exists(startup_exe_path):
+                    os.remove(startup_exe_path)
+                
+                # Kill any running watcher processes
+                try:
+                    subprocess.run(
+                        ['taskkill', '/F', '/IM', watcher_exe_name],
+                        capture_output=True,
+                        creationflags=subprocess.CREATE_NO_WINDOW
+                    )
+                except:
+                    pass  # Ignore if process not running
+                
+                self._auto_index_enabled = False
+                return {
+                    "status": "success",
+                    "message": "Auto-indexing disabled. File watcher stopped.",
+                    "enabled": False
+                }
+                
+        except Exception as e:
+            print(f"Error in set_auto_index: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "enabled": False
+            }
+    
+    def _build_watcher(self, scripts_dir: str) -> Dict[str, Any]:
+        """Build the C# file watcher executable"""
+        try:
+            # Check if dotnet is installed
+            dotnet_check = subprocess.run(
+                ['dotnet', '--version'],
+                capture_output=True,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            
+            if dotnet_check.returncode != 0:
+                return {
+                    "success": False,
+                    "error": ".NET SDK not found. Please install .NET 6.0 SDK or later."
+                }
+            
+            # Run dotnet publish
+            print(f"Building with .NET {dotnet_check.stdout.strip()}...")
+            build_process = subprocess.run(
+                ['dotnet', 'publish', '-c', 'Release', '-r', 'win-x64', 
+                 '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:PublishTrimmed=true'],
+                cwd=scripts_dir,
+                capture_output=True,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            
+            if build_process.returncode != 0:
+                return {
+                    "success": False,
+                    "error": f"Build failed: {build_process.stderr}"
+                }
+            
+            # Find the built executable
+            exe_path = os.path.join(scripts_dir, "bin", "Release", "net6.0", "win-x64", "publish", "SmartestSearchWatcher.exe")
+            
+            if not os.path.exists(exe_path):
+                return {
+                    "success": False,
+                    "error": "Build succeeded but executable not found at expected location"
+                }
+            
+            print(f"Build successful: {exe_path}")
+            return {
+                "success": True,
+                "exe_path": exe_path
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
     def get_auto_index_state(self) -> Dict[str, Any]:
         """Get auto-index state"""

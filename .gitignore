@@ -5,3 +5,6 @@ test.py
 data/
 file_data.json
 embeddings.db
+scripts/bin
+scripts/obj
+Fastest Search Python.sln
