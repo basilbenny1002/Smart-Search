@@ -165,7 +165,7 @@ For help, support, or questions, feel free to reach out on any of these platform
 
 ## Resources
 
-- **Learn How It Works:** [Medium Article](https://medium.com/p/d85d77275c68/edit](https://medium.com/@basilbenny1002/from-trees-to-sqlite-my-journey-building-a-smarter-search-for-windows-d85d77275c68)
+- **Learn How It Works:** [Medium Article](https://medium.com/@basilbenny1002/from-trees-to-sqlite-my-journey-building-a-smarter-search-for-windows-d85d77275c68)
 
 ## License
 
