@@ -1,12 +1,14 @@
-pywebview>=4.0
-keyboard>=0.13.5
-torch>=2.0.0
-git+https://github.com/openai/CLIP.git
-Pillow>=10.0.0
-sentence-transformers>=2.2.0
-PyPDF2>=3.0.0
-python-docx>=0.8.11
-numpy>=1.24.0
-pyuac>=0.0.3
+# Core dependencies for Smart Search
+pywebview==6.1
+keyboard==0.13.5
+torch==2.8.0
+Pillow==10.4.0
+sentence-transformers==5.1.2
+PyPDF2==3.0.1
+python-docx==1.2.0
+numpy==2.0.2
+pyuac==0.0.3
 
+# CLIP for image search (installed from GitHub)
+git+https://github.com/openai/CLIP.git
 
