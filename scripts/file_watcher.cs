@@ -22,17 +22,12 @@ namespace SmartestSearchWatcher
             "temp", "tmp", "cache", "__pycache__", "node_modules", "pkg", ".vscode"
         };
 
-        // Dynamically find Python script path
+        // Get Python script path from same directory as executable
         private static string GetPythonScriptPath()
         {
-            // Get the directory where this executable is located
+            // The auto_index.py script should be in the same folder as this executable
             string exeDir = AppContext.BaseDirectory;
-            
-            // Go up to the project root (from scripts folder to project root)
-            string projectRoot = Directory.GetParent(exeDir).FullName;
-            
-            // Path to auto_index.py in project root
-            return Path.Combine(projectRoot, "auto_index.py");
+            return Path.Combine(exeDir, "auto_index.py");
         }
 
         static void Main(string[] args)
@@ -149,27 +144,35 @@ namespace SmartestSearchWatcher
         {
             try
             {
-                // Get Python script path dynamically
+                // Get Python script path (should be in same directory as this exe)
                 string pythonScript = GetPythonScriptPath();
                 
-                // Create process to run Python script
+                if (!File.Exists(pythonScript))
+                {
+                    Console.WriteLine($"ERROR: auto_index.py not found at {pythonScript}");
+                    return;
+                }
+                
+                // Create process to run Python script (do not redirect output to avoid blocking)
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "python",
                     Arguments = $"\"{pythonScript}\" \"{filePath}\"",
                     UseShellExecute = false,
-                    CreateNoWindow = true, // Run silently
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false
                 };
 
-                using (var process = Process.Start(processInfo))
+                try
                 {
-                    // Don't wait for completion - fire and forget
-                    // This keeps the watcher responsive
+                    Process.Start(processInfo);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Indexed: {Path.GetFileName(filePath)}");
                 }
-
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Indexed: {Path.GetFileName(filePath)}");
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to start python for {filePath}: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {

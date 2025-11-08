@@ -40,7 +40,33 @@ class SearchAPI:
         self._settings_window = None
         self._info_window = None
         self._visible = True
+        # Path to persistent settings file
+        self._settings_path = os.path.join(self._base, 'data', 'settings.json')
+
+        # Load persisted settings (auto-index flag)
         self._auto_index_enabled = False
+        self._load_settings()
+
+        # If auto-index was enabled previously, attempt to start the watcher executable
+        try:
+            if self._auto_index_enabled:
+                startup_folder = os.path.join(os.getenv('APPDATA'), r'Microsoft\Windows\Start Menu\Programs\Startup')
+                startup_exe = os.path.join(startup_folder, 'SmartestSearchWatcher.exe')
+                scripts_exe = os.path.join(self._base, 'scripts', 'bin', 'Release', 'net6.0', 'win-x64', 'publish', 'SmartestSearchWatcher.exe')
+                exe_to_start = None
+                if os.path.exists(startup_exe):
+                    exe_to_start = startup_exe
+                elif os.path.exists(scripts_exe):
+                    exe_to_start = scripts_exe
+
+                if exe_to_start:
+                    try:
+                        subprocess.Popen([exe_to_start], creationflags=subprocess.CREATE_NO_WINDOW)
+                        print('Auto-started file watcher on init')
+                    except Exception as e:
+                        print(f'Failed to start watcher on init: {e}')
+        except Exception:
+            pass
 
     def bind_window(self, window) -> None:
         """Bind the main window reference"""
@@ -495,11 +521,26 @@ class SearchAPI:
                 print(f"Copying watcher to startup folder: {startup_folder}")
                 shutil.copy(watcher_exe, startup_exe_path)
                 
+                # Step 3b: Copy auto_index.py to startup folder (so watcher can find it)
+                auto_index_py = os.path.join(base_dir, "auto_index.py")
+                startup_auto_index_path = os.path.join(startup_folder, "auto_index.py")
+                
+                if os.path.exists(auto_index_py):
+                    print(f"Copying auto_index.py to startup folder")
+                    shutil.copy(auto_index_py, startup_auto_index_path)
+                else:
+                    print(f"WARNING: auto_index.py not found at {auto_index_py}")
+                
                 # Step 4: Start the watcher now
                 print("Starting file watcher...")
                 subprocess.Popen([startup_exe_path], creationflags=subprocess.CREATE_NO_WINDOW)
-                
+
+                # Persist setting
                 self._auto_index_enabled = True
+                try:
+                    self._save_settings()
+                except Exception:
+                    pass
                 return {
                     "status": "success",
                     "message": "Auto-indexing enabled. File watcher is now running.",
@@ -510,6 +551,11 @@ class SearchAPI:
                 if os.path.exists(startup_exe_path):
                     os.remove(startup_exe_path)
                 
+                # Also remove auto_index.py from startup folder
+                startup_auto_index_path = os.path.join(startup_folder, "auto_index.py")
+                if os.path.exists(startup_auto_index_path):
+                    os.remove(startup_auto_index_path)
+                
                 # Kill any running watcher processes
                 try:
                     subprocess.run(
@@ -519,8 +565,12 @@ class SearchAPI:
                     )
                 except:
                     pass  # Ignore if process not running
-                
+                # Persist setting
                 self._auto_index_enabled = False
+                try:
+                    self._save_settings()
+                except Exception:
+                    pass
                 return {
                     "status": "success",
                     "message": "Auto-indexing disabled. File watcher stopped.",
@@ -593,3 +643,27 @@ class SearchAPI:
     def get_auto_index_state(self) -> Dict[str, Any]:
         """Get auto-index state"""
         return {"enabled": self._auto_index_enabled}
+
+    def _load_settings(self) -> None:
+        """Load persistent settings from disk (if present)."""
+        try:
+            if os.path.exists(self._settings_path):
+                with open(self._settings_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self._auto_index_enabled = bool(data.get('auto_index_enabled', False))
+            else:
+                self._auto_index_enabled = False
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            self._auto_index_enabled = False
+
+    def _save_settings(self) -> None:
+        """Save persistent settings to disk."""
+        try:
+            os.makedirs(os.path.dirname(self._settings_path), exist_ok=True)
+            with open(self._settings_path, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'auto_index_enabled': bool(self._auto_index_enabled)
+                }, f, indent=2)
+        except Exception as e:
+            print(f"Error saving settings: {e}")
