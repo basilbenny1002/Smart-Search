@@ -1,5 +1,5 @@
 """
-Fastest Search - Main entry point
+Smart Search - Main entry point
 Press Ctrl+Space to toggle the search window
 """
 import threading
@@ -15,7 +15,7 @@ def main():
 
     # Create main window
     window = webview.create_window(
-        "Fastest Search",
+        "Smart Search",
         os.path.join(UI_DIR, "index.html"),
         width=WINDOW_WIDTH,
         height=WINDOW_HEIGHT,
@@ -55,7 +55,7 @@ def main():
     threading.Thread(target=hotkey_thread, daemon=True).start()
 
     # Start the application
-    print("Starting Fastest Search...")
+    print("Starting Smart Search...")
     print("Press Ctrl+Space to toggle search window")
     webview.start(debug=False)
 

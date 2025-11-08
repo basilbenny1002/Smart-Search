@@ -1,4 +1,4 @@
-"""Configuration settings for Fastest Search"""
+"""Configuration settings for Smart Search"""
 import os
 
 # Paths
