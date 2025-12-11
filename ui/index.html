@@ -304,15 +304,28 @@
             -webkit-app-region:no-drag;
             flex:1; overflow-y:hidden; padding:8px 12px;
             display:none; height:100%; min-height:0;
+            position: relative; /* For virtual scrolling */
         }
-        .results-container.show { display:block; overflow-y:auto; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
-        .results-container.grid-view {
-            display:grid !important;
-            grid-template-columns:repeat(3,1fr);
-            gap:16px; padding:16px;
-            overflow-y:auto !important;
-            height:100%; scroll-behavior:smooth;
-            -webkit-overflow-scrolling:touch;
+        .results-container.show { display:block; overflow-y:auto; scroll-behavior:auto; -webkit-overflow-scrolling:touch; }
+        
+        /* Virtual Scrolling Elements */
+        #virtualSpacer {
+            width: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #virtualContent {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 8px 12px; /* Match container padding */
+        }
+        
+        /* Grid View for Virtual Content */
+        #virtualContent.grid-view-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding: 16px;
         }
 
         .result-item {
@@ -323,6 +336,8 @@
             transition:all .2s ease;
             border-left:3px solid transparent;
             box-shadow:0 2px 8px rgba(0,0,0,.08);
+            height: 64px; /* Fixed height for virtual scrolling */
+            overflow: hidden;
         }
         .result-item:hover { background:rgba(255,255,255,.95); border-left-color:rgba(150,120,200,.8); box-shadow:0 4px 12px rgba(0,0,0,.12); }
         .result-item.selected { background:rgba(100,120,180,.9); border-left-color:rgba(200,220,255,1); box-shadow:0 4px 12px rgba(100,120,180,.4); }
@@ -700,12 +715,162 @@
             displayResults(filtered);
         }
 
+        /* ---------- Virtual Scroller ---------- */
+        const VirtualScroller = {
+            items: [],
+            isGrid: false,
+            itemHeight: 70, // 64px + 6px margin
+            gridRowHeight: 316, // 300px + 16px gap
+            buffer: 5,
+            itemsPerRow: 1,
+            container: null,
+            spacer: null,
+            content: null,
+            
+            init: function(items, isGrid) {
+                this.items = items;
+                this.isGrid = isGrid;
+                this.container = document.getElementById('resultsContainer');
+                
+                // Setup DOM structure
+                this.container.innerHTML = '<div id="virtualSpacer"></div><div id="virtualContent"></div>';
+                this.spacer = document.getElementById('virtualSpacer');
+                this.content = document.getElementById('virtualContent');
+                
+                // Reset scroll
+                this.container.scrollTop = 0;
+                
+                if (isGrid) {
+                    this.itemsPerRow = 3;
+                    this.itemHeight = this.gridRowHeight;
+                    this.content.classList.add('grid-view-content');
+                    this.content.style.padding = '16px';
+                } else {
+                    this.itemsPerRow = 1;
+                    this.itemHeight = 70; 
+                    this.content.classList.remove('grid-view-content');
+                    this.content.style.padding = '8px 12px';
+                }
+                
+                this.totalRows = Math.ceil(items.length / this.itemsPerRow);
+                this.spacer.style.height = (this.totalRows * this.itemHeight) + 'px';
+                
+                this.render();
+                
+                this.container.onscroll = () => {
+                    requestAnimationFrame(() => this.render());
+                };
+            },
+            
+            render: function() {
+                if (!this.container || !this.items.length) return;
+                
+                const scrollTop = this.container.scrollTop;
+                const containerHeight = this.container.clientHeight;
+                
+                let startRow = Math.floor(scrollTop / this.itemHeight) - this.buffer;
+                if (startRow < 0) startRow = 0;
+                
+                let visibleRows = Math.ceil(containerHeight / this.itemHeight) + 2 * this.buffer;
+                let endRow = startRow + visibleRows;
+                if (endRow > this.totalRows) endRow = this.totalRows;
+                
+                const startItemIndex = startRow * this.itemsPerRow;
+                const endItemIndex = Math.min(endRow * this.itemsPerRow, this.items.length);
+                
+                const visibleItems = this.items.slice(startItemIndex, endItemIndex);
+                
+                // Render HTML
+                let html = '';
+                if (this.isGrid) {
+                    html = visibleItems.map((item, i) => {
+                        const actualIndex = startItemIndex + i;
+                        return `
+                        <div class="image-card" data-index="${actualIndex}">
+                            <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="image-card-preview">
+                            <div class="image-card-info">
+                                <div class="image-card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+                                <div class="image-card-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path)}</div>
+                                <div class="image-card-actions">
+                                    <button class="image-action-btn open" data-action="open" data-index="${actualIndex}">Open</button>
+                                    <button class="image-action-btn locate" data-action="locate" data-index="${actualIndex}">Locate</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    html = visibleItems.map((item, i) => {
+                        const actualIndex = startItemIndex + i;
+                        return `
+                        <div class="result-item" data-index="${actualIndex}">
+                            <span class="result-icon">${getSvgIcon(item.iconType)}</span>
+                            <div class="result-info">
+                                <div class="result-name">${escapeHtml(item.name)}</div>
+                                <div class="result-path">${escapeHtml(item.path)}</div>
+                                ${item.snippet ? `<div class="result-snippet" style="font-size:11px;color:rgba(50,50,80,.6);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.snippet)}</div>` : ''}
+                            </div>
+                            <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
+                        </div>`;
+                    }).join('');
+                }
+                
+                this.content.innerHTML = html;
+                this.content.style.transform = `translateY(${startRow * this.itemHeight}px)`;
+                
+                this.attachEvents();
+                
+                // Highlight selection if visible
+                if (selectedIndex >= startItemIndex && selectedIndex < endItemIndex) {
+                    const el = document.querySelector(`[data-index="${selectedIndex}"]`);
+                    if (el) el.classList.add('selected');
+                }
+            },
+            
+            attachEvents: function() {
+                if (this.isGrid) {
+                    document.querySelectorAll('.image-card').forEach(el => {
+                        const idx = +el.dataset.index;
+                        el.addEventListener('mouseover', () => { selectedIndex = idx; updateSelection(); });
+                    });
+                    document.querySelectorAll('.image-action-btn').forEach(btn => {
+                        btn.addEventListener('click', e => {
+                            e.stopPropagation();
+                            const idx = +btn.dataset.index;
+                            const act = btn.dataset.action;
+                            if (act === 'open') openResult(currentResults[idx]);
+                            else if (act === 'locate') openFileLocation(currentResults[idx]);
+                        });
+                    });
+                } else {
+                    document.querySelectorAll('.result-item').forEach(el => {
+                        const idx = +el.dataset.index;
+                        el.addEventListener('mouseover', () => { selectedIndex = idx; updateSelection(); });
+                        el.addEventListener('click', () => {
+                            selectedIndex = idx; updateSelection();
+                            openResult(currentResults[idx]);
+                        });
+                    });
+                }
+            },
+            
+            scrollToIndex: function(index) {
+                const row = Math.floor(index / this.itemsPerRow);
+                const top = row * this.itemHeight;
+                // Check if out of view
+                if (top < this.container.scrollTop || top + this.itemHeight > this.container.scrollTop + this.container.clientHeight) {
+                    this.container.scrollTop = top;
+                    this.render();
+                } else {
+                    this.render();
+                }
+            }
+        };
+
         /* ---------- Render results ---------- */
         async function displayResults(results) {
             if (!results.length) {
                 resultsContainer.innerHTML = '<div class="no-results">No results found</div>';
                 resultsContainer.classList.add('show');
-                resultsContainer.classList.remove('grid-view');
                 hintText.style.display = 'none';
                 if (window.pywebview?.api?.resize_window) await window.pywebview.api.resize_window(false);
                 return;
@@ -714,62 +879,32 @@
             hintText.style.display = 'none';
             if (window.pywebview?.api?.resize_window) await window.pywebview.api.resize_window(true);
 
-            if (currentSearchType === 'image') {
-                resultsContainer.classList.add('grid-view');
-                resultsContainer.innerHTML = results.map((item,i) => `
-                    <div class="image-card" data-index="${i}">
-                        <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.name)}" class="image-card-preview">
-                        <div class="image-card-info">
-                            <div class="image-card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-                            <div class="image-card-path" title="${escapeHtml(item.path)}">${escapeHtml(item.path)}</div>
-                            <div class="image-card-actions">
-                                <button class="image-action-btn open" data-action="open" data-index="${i}">Open</button>
-                                <button class="image-action-btn locate" data-action="locate" data-index="${i}">Locate</button>
-                            </div>
-                        </div>
-                    </div>`).join('');
-
-                document.querySelectorAll('.image-card').forEach(el => {
-                    const idx = +el.dataset.index;
-                    el.addEventListener('mouseover', () => { selectedIndex = idx; updateSelection(); });
-                });
-                document.querySelectorAll('.image-action-btn').forEach(btn => {
-                    btn.addEventListener('click', e => {
-                        e.stopPropagation();
-                        const idx = +btn.dataset.index;
-                        const act = btn.dataset.action;
-                        if (act === 'open') openResult(currentResults[idx]);
-                        else if (act === 'locate') openFileLocation(currentResults[idx]);
-                    });
-                });
-            } else {
-                resultsContainer.classList.remove('grid-view');
-                resultsContainer.innerHTML = results.map((item,i) => `
-                    <div class="result-item" data-index="${i}">
-                        <span class="result-icon">${getSvgIcon(item.iconType)}</span>
-                        <div class="result-info">
-                            <div class="result-name">${escapeHtml(item.name)}</div>
-                            <div class="result-path">${escapeHtml(item.path)}</div>
-                            ${item.snippet ? `<div class="result-snippet" style="font-size:11px;color:rgba(50,50,80,.6);margin-top:3px;font-style:italic;">${escapeHtml(item.snippet)}</div>` : ''}
-                        </div>
-                        <span class="result-type-badge">${(item.type||'').toUpperCase()}</span>
-                    </div>`).join('');
-
-                document.querySelectorAll('.result-item').forEach(el => {
-                    const idx = +el.dataset.index;
-                    el.addEventListener('mouseover', () => { selectedIndex = idx; updateSelection(); });
-                    el.addEventListener('click', () => {
-                        selectedIndex = idx; updateSelection();
-                        openResult(currentResults[idx]);
-                    });
-                });
-            }
             resultsContainer.classList.add('show');
+            
+            // Initialize Virtual Scroller
+            const isGrid = (currentSearchType === 'image');
+            VirtualScroller.init(results, isGrid);
         }
 
         function updateSelection() {
-            document.querySelectorAll('.result-item, .image-card').forEach((el,i) => el.classList.toggle('selected', i===selectedIndex));
-            if (selectedIndex >= 0) document.querySelector(`[data-index="${selectedIndex}"]`)?.scrollIntoView({block:'nearest'});
+            // Remove selected class from all currently rendered items
+            document.querySelectorAll('.result-item, .image-card').forEach(el => el.classList.remove('selected'));
+            
+            if (selectedIndex >= 0) {
+                // Check if the item is currently rendered
+                let el = document.querySelector(`[data-index="${selectedIndex}"]`);
+                
+                if (!el) {
+                    // Item not rendered, scroll to it
+                    VirtualScroller.scrollToIndex(selectedIndex);
+                    // After scroll/render, try finding it again
+                    el = document.querySelector(`[data-index="${selectedIndex}"]`);
+                }
+                
+                if (el) {
+                    el.classList.add('selected');
+                }
+            }
         }
 
         function openResult(item) {
@@ -832,6 +967,10 @@
         document.getElementById('infoBtn')    .addEventListener('click', () => window.pywebview?.api?.open_info?.());
 
         function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+
+        window.addEventListener('resize', () => {
+            if (VirtualScroller.items.length) VirtualScroller.render();
+        });
 
         window.addEventListener('load', () => searchInput.focus());
     </script>
